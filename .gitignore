@@ -41,4 +41,9 @@ lerna-debug.log*
 # Raw transaction data (personal financial records)
 alipay-record/
 wechatpay-record/
+public/alipay-record/
+public/wechatpay-record/
+
+# Preprocessed data (generated from raw files)
+public/data/
 

@@ -20,6 +20,7 @@ export interface CoffeeTransaction extends Transaction {
   isCoffee: boolean;
   confidence: number;
   matchedKeywords: string[];
+  isConfirmed?: boolean; // User confirmation status
 }
 
 export interface CoffeeDataByDate {

@@ -58,6 +58,8 @@ const COFFEE_KEYWORDS = {
     'Grid Coffee',
     'coffee',
     '咖啡',
+    '北京茵赫餐饮管理有限公司',
+    '茵赫', // Manner Coffee official company name
   ],
 }
 
@@ -65,25 +67,39 @@ const COFFEE_KEYWORDS = {
  * Check if a transaction is coffee-related
  */
 export function detectCoffee(transaction: Transaction): CoffeeTransaction {
-  const merchant = (transaction.merchant || '').toLowerCase()
+  const merchant = transaction.merchant || ''
+  const merchantLower = merchant.toLowerCase()
   const description = (transaction.description || '').toLowerCase()
+  const account = (transaction.account || '').toLowerCase() // Also check account field
   
   const matchedKeywords: string[] = []
   let confidence = 0
   
-  // Check merchant name
+  // Check merchant name (handle both Chinese and English)
   for (const keyword of COFFEE_KEYWORDS.merchantNames) {
-    if (merchant.includes(keyword.toLowerCase())) {
+    // For Chinese keywords, check original case; for English, check lowercase
+    const merchantToCheck = /[\u4e00-\u9fa5]/.test(keyword) ? merchant : merchantLower
+    const keywordToCheck = /[\u4e00-\u9fa5]/.test(keyword) ? keyword : keyword.toLowerCase()
+    
+    if (merchantToCheck.includes(keywordToCheck)) {
       matchedKeywords.push(keyword)
       confidence += 0.8 // High confidence for merchant match
       break
     }
   }
   
-  // Check English keywords in merchant and description
+  // Check account field for coffee-related domains/emails (e.g., mannercoffee.com.cn)
+  if (account.includes('mannercoffee') || account.includes('starbucks') || account.includes('luckin') || account.includes('coffee')) {
+    if (!matchedKeywords.some(k => k.toLowerCase().includes('manner') || k.toLowerCase().includes('coffee'))) {
+      matchedKeywords.push('account-domain')
+      confidence += 0.9 // High confidence for domain match
+    }
+  }
+  
+  // Check English keywords in merchant, description, and account
   for (const keyword of COFFEE_KEYWORDS.english) {
     const keywordLower = keyword.toLowerCase()
-    if (merchant.includes(keywordLower) || description.includes(keywordLower)) {
+    if (merchantLower.includes(keywordLower) || description.includes(keywordLower) || account.includes(keywordLower)) {
       if (!matchedKeywords.includes(keyword)) {
         matchedKeywords.push(keyword)
         confidence += 0.6
@@ -91,9 +107,9 @@ export function detectCoffee(transaction: Transaction): CoffeeTransaction {
     }
   }
   
-  // Check Chinese keywords in merchant and description
+  // Check Chinese keywords in merchant, description, and account
   for (const keyword of COFFEE_KEYWORDS.chinese) {
-    if (merchant.includes(keyword) || description.includes(keyword)) {
+    if (merchant.includes(keyword) || description.includes(keyword) || account.includes(keyword)) {
       if (!matchedKeywords.includes(keyword)) {
         matchedKeywords.push(keyword)
         confidence += 0.7
