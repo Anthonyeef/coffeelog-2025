@@ -24,6 +24,8 @@ const COFFEE_KEYWORDS = {
     'starbucks', '星巴克', 'luckin', '瑞幸', 'manner', 'Manner',
     'mannercoffee', 'grid coffee', 'Grid Coffee', 'coffee', '咖啡',
     '北京茵赫餐饮管理有限公司', '茵赫', // Manner Coffee official company name
+    '豆子咖啡实验室', '豆仔', // 豆仔 coffee shop
+    '白鲸咖啡', '白鲸', // 白鲸咖啡 (White Whale Coffee) - bean roaster
   ],
 };
 
@@ -81,7 +83,45 @@ function detectCoffee(transaction) {
   confidence = Math.min(confidence, 1.0);
   const isCoffee = confidence > 0.5;
   
-  return { isCoffee, confidence, matchedKeywords };
+  // Detect coffee beans purchases
+  const beanKeywords = [
+    '咖啡豆', 'bean', 'beans', 'whole bean', 'whole beans',
+    'ground coffee', '咖啡粉', '烘焙', 'roast', 'roasted',
+    '手冲', 'pour over', 'soe', '拼配', 'blend', '单品',
+    'kg', '100g', '250g', '500g', '454g', '60g', 'g/', 'g ', // Weight measurements only
+    '瑰夏', 'geisha', '耶加', 'yirgacheffe', '埃塞', 'ethiopia',
+    '庄园', 'estate', '水洗', 'washed', '日晒', 'natural',
+    '浅烘', 'light roast', '中烘', 'medium roast', '深烘', 'dark roast'
+  ];
+  
+  // 白鲸咖啡 is a bean roaster, so all their transactions are beans
+  const isBaijing = merchant.includes('白鲸') || description.includes('白鲸');
+  
+  const allText = (merchant + ' ' + description + ' ' + account).toLowerCase();
+  
+  // Check for "豆" (bean) keyword - must be part of "咖啡豆" or standalone "豆" but not just "咖啡"
+  const hasBeanKeyword = description.includes('咖啡豆') || merchant.includes('咖啡豆') ||
+                         (description.includes('豆') && !description.includes('咖啡店') && !description.includes('咖啡厅') && !description.includes('咖啡·')) ||
+                         (merchant.includes('豆') && !merchant.includes('咖啡店') && !merchant.includes('咖啡厅'));
+  
+  const isBeans = isCoffee && (isBaijing || hasBeanKeyword || beanKeywords.some(keyword => {
+    const keywordLower = keyword.toLowerCase();
+    // For weight measurements, check if they appear as part of a weight (e.g., "100g", "250g")
+    if (keyword.includes('g') || keyword === 'kg') {
+      // Match weight patterns like "100g", "250g", "kg", etc.
+      const weightPattern = new RegExp(`\\d+${keyword.replace('g', '')}g|\\d+kg|${keyword}`, 'i');
+      return weightPattern.test(allText);
+    }
+    return allText.includes(keywordLower);
+  }));
+  
+  return { 
+    ...transaction,
+    isCoffee, 
+    confidence, 
+    matchedKeywords,
+    isBeans: isBeans || false
+  };
 }
 
 function parseCSVLine(line) {
@@ -351,13 +391,14 @@ console.log(`\nTotal transactions from 2025: ${allTransactions.length}`);
 console.log('\nDetecting coffee transactions...');
 const coffeeTransactions = [];
 for (const transaction of allTransactions) {
-  const { isCoffee, confidence, matchedKeywords } = detectCoffee(transaction);
+  const { isCoffee, confidence, matchedKeywords, isBeans } = detectCoffee(transaction);
   if (isCoffee) {
     coffeeTransactions.push({
       ...transaction,
       isCoffee: true,
       confidence,
       matchedKeywords,
+      isBeans: isBeans || false,
     });
   }
 }

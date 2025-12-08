@@ -12,9 +12,18 @@ body {
   -moz-osx-font-smoothing: grayscale;
   color: #333;
   background-color: #fff;
+  line-height: 1.6;
 }
 
 #root {
   min-height: 100vh;
+}
+
+button {
+  font-family: inherit;
+}
+
+button:focus {
+  outline: none;
 }
 

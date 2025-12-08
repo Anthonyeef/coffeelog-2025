@@ -21,6 +21,7 @@ export interface CoffeeTransaction extends Transaction {
   confidence: number;
   matchedKeywords: string[];
   isConfirmed?: boolean; // User confirmation status
+  isBeans?: boolean; // Coffee beans purchase
 }
 
 export interface CoffeeDataByDate {

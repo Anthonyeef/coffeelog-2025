@@ -1,14 +1,24 @@
 import { useEffect, useState } from 'react'
-import { useCoffeeStatistics, useCoffeeTransactions, useCoffeeByDate } from './hooks/useCoffeeData'
 import { CoffeeDataByDate, CoffeeStatistics, CoffeeTransaction } from './types'
+import YearView from './components/YearView'
+import DayDetails from './components/DayDetails'
 
 function App() {
-  const [showDetails, setShowDetails] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [coffeeTransactions, setCoffeeTransactions] = useState<CoffeeTransaction[]>([])
   const [coffeeByDate, setCoffeeByDate] = useState<CoffeeDataByDate>({})
   const [statistics, setStatistics] = useState<CoffeeStatistics | null>(null)
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [filterManner, setFilterManner] = useState(false)
+  const [filterGrid, setFilterGrid] = useState(false)
+  const [filterDozzze, setFilterDozzze] = useState(false)
+  const [filterHans, setFilterHans] = useState(false)
+  const [filterBeans, setFilterBeans] = useState(false)
+  const [filterCafe, setFilterCafe] = useState(false)
+  const [selectedCafeName, setSelectedCafeName] = useState<string | null>(null)
+  const [selectedBeanMerchant, setSelectedBeanMerchant] = useState<string | null>(null)
+  const [filterEspresso, setFilterEspresso] = useState(false)
 
   useEffect(() => {
     // Load preprocessed data from JSON file
@@ -45,6 +55,261 @@ function App() {
     loadPreprocessedData()
   }, [])
 
+  const handleDateClick = (date: string) => {
+    setSelectedDate(date)
+  }
+
+  const handleCloseDetails = () => {
+    setSelectedDate(null)
+  }
+
+  // Extract cafe name from transaction
+  const getCafeName = (transaction: CoffeeTransaction): string => {
+    const merchant = transaction.merchant || ''
+    const desc = transaction.description || ''
+    
+    // If merchant looks like a cafe name (not a platform), use it
+    if (merchant && !merchant.includes('淘宝') && !merchant.includes('美团') && 
+        merchant.length > 1 && merchant.length < 50) {
+      return merchant
+    }
+    
+    // Try to extract from description
+    // Match patterns like "Cafe Name咖啡", "Cafe Name·咖啡", "Cafe Name coffee", etc.
+    const patterns = [
+      /([^·(（]+(?:coffee|咖啡|咖啡店|咖啡厅|咖啡吧|cafe|café)[^·(（]*)/i,
+      /([A-Za-z\s]+(?:coffee|cafe|café))/i,
+      /([^·(（]+咖啡[^·(（]*)/i,
+    ]
+    
+    for (const pattern of patterns) {
+      const match = desc.match(pattern)
+      if (match) {
+        const name = match[1].trim()
+        if (name.length > 1 && name.length < 50) {
+          return name
+        }
+      }
+    }
+    
+    // Fallback: use first part of description
+    return desc.split(/[·(（]/)[0].trim() || merchant || 'Unknown Cafe'
+  }
+
+  // Get all unique cafe names from cafe transactions
+  const getCafeNames = (): string[] => {
+    const chains = ['manner', 'grid', 'starbucks', 'luckin', '星巴克', '瑞幸', '北京茵赫', '茵赫', 'dozzze', '豆仔', 'hans', '憨憨', '白鲸']
+    const cafeNames = new Set<string>()
+    
+    for (const transactions of Object.values(coffeeByDate)) {
+      for (const t of transactions) {
+        const merchant = (t.merchant || '').toLowerCase()
+        const desc = (t.description || '').toLowerCase()
+        const account = (t.account || '').toLowerCase()
+        
+        const isChain = chains.some(chain => 
+          merchant.includes(chain.toLowerCase()) || 
+          desc.includes(chain.toLowerCase()) || 
+          account.includes(chain.toLowerCase())
+        )
+        const isBeans = t.isBeans === true
+        const isEquipment = desc.includes('滤纸') || desc.includes('粉碗') || desc.includes('手柄') ||
+                           desc.includes('咖啡壶') || desc.includes('咖啡杯') || desc.includes('冷萃壶') ||
+                           desc.includes('冷泡') || desc.includes('过滤') || desc.includes('咖啡机')
+        
+        if (!isChain && !isBeans && !isEquipment) {
+          const cafeName = getCafeName(t)
+          if (cafeName && cafeName !== 'Unknown Cafe' && !cafeName.includes('淘宝') && !cafeName.includes('美团')) {
+            cafeNames.add(cafeName)
+          }
+        }
+      }
+    }
+    
+    return Array.from(cafeNames).sort()
+  }
+
+  // Get all unique bean merchant names
+  const getBeanMerchants = (): string[] => {
+    const merchants = new Set<string>()
+    
+    for (const transactions of Object.values(coffeeByDate)) {
+      for (const t of transactions) {
+        if (t.isBeans === true) {
+          const merchant = t.merchant || ''
+          if (merchant && merchant.length > 1) {
+            merchants.add(merchant)
+          }
+        }
+      }
+    }
+    
+    return Array.from(merchants).sort()
+  }
+
+  // Filter coffee data by Manner, Grid, DOzzZE豆仔, Hans coffee, Beans, or Cafe if filters are enabled
+  const getFilteredCoffeeByDate = (): CoffeeDataByDate => {
+    if (!filterManner && !filterGrid && !filterDozzze && !filterHans && !filterBeans && !filterCafe) {
+      return coffeeByDate
+    }
+    
+    const filtered: CoffeeDataByDate = {}
+    for (const [date, transactions] of Object.entries(coffeeByDate)) {
+      let filteredTransactions = transactions
+      
+      if (filterManner) {
+        filteredTransactions = filteredTransactions.filter(t => {
+          const isManner = 
+            t.merchant.toLowerCase().includes('manner') ||
+            t.merchant.includes('北京茵赫') ||
+            t.merchant.includes('茵赫') ||
+            t.account.toLowerCase().includes('mannercoffee') ||
+            t.matchedKeywords.some(k => k.toLowerCase().includes('manner'))
+          
+          if (!isManner) return false
+          
+          // If espresso filter is active, only show transactions <= 5 RMB
+          if (filterEspresso) {
+            return t.amount <= 5
+          }
+          
+          return true
+        })
+      }
+      
+      if (filterGrid) {
+        filteredTransactions = filteredTransactions.filter(t => 
+          t.merchant.toLowerCase().includes('grid') ||
+          t.merchant.includes('Grid') ||
+          t.description.toLowerCase().includes('grid coffee') ||
+          t.matchedKeywords.some(k => k.toLowerCase().includes('grid'))
+        )
+      }
+      
+      if (filterDozzze) {
+        filteredTransactions = filteredTransactions.filter(t => 
+          t.merchant.includes('DOzzZE') ||
+          t.merchant.includes('豆仔') ||
+          t.description.includes('DOzzZE') ||
+          t.description.includes('豆仔')
+        )
+      }
+      
+      if (filterHans) {
+        filteredTransactions = filteredTransactions.filter(t => 
+          t.merchant.toLowerCase().includes('hans') ||
+          t.description.toLowerCase().includes('hans') ||
+          t.merchant.includes('憨憨')
+        )
+      }
+      
+      if (filterBeans) {
+        filteredTransactions = filteredTransactions.filter(t => {
+          // Use the isBeans property from the transaction data if available
+          let isBean = false
+          if (t.isBeans !== undefined) {
+            isBean = t.isBeans === true
+          } else {
+            // Fallback to keyword matching if isBeans is not set
+            const desc = (t.description || '').toLowerCase()
+            const merchant = (t.merchant || '').toLowerCase()
+            // Match transactions with 咖啡豆 (coffee beans) keyword
+            isBean = desc.includes('咖啡豆') || merchant.includes('咖啡豆') ||
+                     (desc.includes('咖啡') && (
+                       desc.includes('豆') || desc.includes('bean') || 
+                       desc.includes('烘焙') || desc.includes('roast') ||
+                       desc.includes('拼配') || desc.includes('blend') ||
+                       desc.includes('瑰夏') || desc.includes('geisha') ||
+                       desc.includes('埃塞') || desc.includes('ethiopia') ||
+                       desc.includes('庄园') || desc.includes('estate')
+                     ))
+          }
+          
+          // If a specific merchant is selected, filter by merchant name
+          if (isBean && selectedBeanMerchant) {
+            return t.merchant === selectedBeanMerchant
+          }
+          
+          return isBean
+        })
+      }
+      
+      if (filterCafe) {
+        filteredTransactions = filteredTransactions.filter(t => {
+          // Exclude chain stores
+          const merchant = (t.merchant || '').toLowerCase()
+          const desc = (t.description || '').toLowerCase()
+          const account = (t.account || '').toLowerCase()
+          
+          const isChain = 
+            merchant.includes('manner') || merchant.includes('北京茵赫') || merchant.includes('茵赫') ||
+            merchant.includes('grid') || merchant.includes('grid coffee') ||
+            merchant.includes('starbucks') || merchant.includes('星巴克') ||
+            merchant.includes('luckin') || merchant.includes('瑞幸') ||
+            merchant.includes('dozzze') || merchant.includes('豆仔') ||
+            merchant.includes('hans') || merchant.includes('憨憨') ||
+            merchant.includes('白鲸') ||
+            desc.includes('manner') || desc.includes('grid coffee') || desc.includes('starbucks') ||
+            desc.includes('luckin') || desc.includes('dozzze') || desc.includes('豆仔') ||
+            desc.includes('hans') || desc.includes('憨憨') || desc.includes('白鲸') ||
+            account.includes('mannercoffee') || account.includes('starbucks') || account.includes('luckin')
+          
+          // Exclude bean purchases
+          const isBeans = t.isBeans === true
+          
+          // Exclude equipment purchases (filters, cups, bottles, etc.)
+          const isEquipment = desc.includes('滤纸') || desc.includes('粉碗') || desc.includes('手柄') ||
+                             desc.includes('咖啡壶') || desc.includes('咖啡杯') || desc.includes('冷萃壶') ||
+                             desc.includes('冷泡') || desc.includes('过滤') || desc.includes('咖啡机')
+          
+          const isCafe = !isChain && !isBeans && !isEquipment
+          
+          // If a specific cafe is selected, filter by cafe name
+          if (isCafe && selectedCafeName) {
+            const cafeName = getCafeName(t)
+            return cafeName === selectedCafeName
+          }
+          
+          return isCafe
+        })
+      }
+      
+      if (filteredTransactions.length > 0) {
+        filtered[date] = filteredTransactions
+      }
+    }
+    return filtered
+  }
+
+  const filteredCoffeeByDate = getFilteredCoffeeByDate()
+  const activeFilter = filterGrid ? 'grid' : filterManner ? 'manner' : filterDozzze ? 'dozzze' : filterHans ? 'hans' : filterBeans ? 'beans' : null
+  const hasActiveFilter = filterManner || filterGrid || filterDozzze || filterHans || filterBeans
+  
+  // Helper function to get button style with dim effect
+  const getButtonStyle = (isActive: boolean, color: string, isDimmed: boolean) => ({
+    background: isActive ? color : 'transparent',
+    border: `1px solid ${color}`,
+    fontSize: '12px',
+    color: isActive ? '#fff' : isDimmed ? '#ccc' : color,
+    cursor: isDimmed ? 'not-allowed' : 'pointer',
+    padding: '6px 16px',
+    borderRadius: '20px',
+    fontWeight: 'normal',
+    opacity: isDimmed ? 0.4 : 1,
+    transition: 'opacity 0.2s ease',
+  })
+  
+  // Calculate filtered statistics
+  const getFilteredStats = () => {
+    const allFilteredTransactions = Object.values(filteredCoffeeByDate).flat()
+    const count = allFilteredTransactions.length
+    const totalSpending = allFilteredTransactions.reduce((sum, t) => sum + t.amount, 0)
+    
+    return { count, totalSpending }
+  }
+  
+  const filteredStats = getFilteredStats()
+
   if (isLoading) {
     return (
       <div style={{ padding: '20px', textAlign: 'center' }}>
@@ -66,83 +331,326 @@ function App() {
   }
 
   return (
-    <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
-      <h1>Coffee Diary 2025</h1>
-      
-      <div style={{ marginTop: '30px', padding: '15px', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
-        <h2>Statistics</h2>
-        {statistics && statistics.totalPurchases > 0 ? (
-          <div>
-            <p style={{ fontSize: '18px', fontWeight: 'bold', color: '#007bff' }}>
-              <strong>Total Coffee Purchases: {statistics.totalPurchases}</strong>
-            </p>
-            <p><strong>Total Spending:</strong> ¥{statistics.totalSpending.toFixed(2)}</p>
-            <p><strong>Average per Month:</strong> {statistics.averagePerMonth.toFixed(1)}</p>
-            <p><strong>Average per Week:</strong> {statistics.averagePerWeek.toFixed(1)}</p>
-            <p><strong>Most Frequent Shop:</strong> {statistics.mostFrequentShop || 'N/A'}</p>
-            <div style={{ marginTop: '10px' }}>
-              <strong>Monthly Frequency:</strong>
-              <ul>
-                {Object.entries(statistics.purchaseFrequency)
-                  .sort(([a], [b]) => a.localeCompare(b))
-                  .map(([month, count]) => (
-                    <li key={month}>{month}: {count} purchases</li>
-                  ))}
-              </ul>
-            </div>
-            <div style={{ marginTop: '15px' }}>
+    <div style={{ padding: '40px 20px', maxWidth: '1000px', margin: '0 auto' }}>
+      {/* Header */}
+      <div style={{ 
+        marginBottom: '30px',
+        borderBottom: '1px solid #ddd',
+        paddingBottom: '20px'
+      }}>
+        <h1 style={{ 
+          fontSize: '28px', 
+          fontWeight: 'normal', 
+          marginBottom: '15px',
+          color: '#333',
+          letterSpacing: '1px'
+        }}>
+          yifen's coffee log 2025
+        </h1>
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          gap: '10px',
+          flexWrap: 'wrap'
+        }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center',
+            gap: '10px',
+            flexWrap: 'wrap'
+          }}>
+            <button
+              onClick={() => {
+                setFilterManner(!filterManner)
+                if (!filterManner) {
+                  setFilterGrid(false)
+                  setFilterDozzze(false)
+                  setFilterHans(false)
+                  setFilterBeans(false)
+                  setFilterCafe(false)
+                  setFilterEspresso(false)
+                } else {
+                  setFilterEspresso(false) // Reset espresso filter when enabling manner filter
+                }
+              }}
+              style={getButtonStyle(filterManner, '#d32f2f', hasActiveFilter && !filterManner)}
+            >
+              manner
+            </button>
+            <button
+              onClick={() => {
+                setFilterGrid(!filterGrid)
+                if (!filterGrid) {
+                  setFilterManner(false)
+                  setFilterDozzze(false)
+                  setFilterHans(false)
+                  setFilterBeans(false)
+                  setFilterCafe(false)
+                }
+              }}
+              style={getButtonStyle(filterGrid, '#8B4513', hasActiveFilter && !filterGrid)}
+            >
+              grid
+            </button>
+            <button
+              onClick={() => {
+                setFilterDozzze(!filterDozzze)
+                if (!filterDozzze) {
+                  setFilterManner(false)
+                  setFilterGrid(false)
+                  setFilterHans(false)
+                  setFilterBeans(false)
+                  setFilterCafe(false)
+                }
+              }}
+              style={getButtonStyle(filterDozzze, '#666', hasActiveFilter && !filterDozzze)}
+            >
+              dozzze
+            </button>
+            <button
+              onClick={() => {
+                setFilterHans(!filterHans)
+                if (!filterHans) {
+                  setFilterManner(false)
+                  setFilterGrid(false)
+                  setFilterDozzze(false)
+                  setFilterBeans(false)
+                  setFilterCafe(false)
+                }
+              }}
+              style={getButtonStyle(filterHans, '#9C27B0', hasActiveFilter && !filterHans)}
+            >
+              hans
+            </button>
+            <button
+              onClick={() => {
+                setFilterBeans(!filterBeans)
+                if (!filterBeans) {
+                  setFilterManner(false)
+                  setFilterGrid(false)
+                  setFilterDozzze(false)
+                  setFilterHans(false)
+                  setFilterCafe(false)
+                }
+              }}
+              style={getButtonStyle(filterBeans, '#FF9800', hasActiveFilter && !filterBeans)}
+            >
+              beans
+            </button>
+            <button
+              onClick={() => {
+                setFilterCafe(!filterCafe)
+                if (!filterCafe) {
+                  setFilterManner(false)
+                  setFilterGrid(false)
+                  setFilterDozzze(false)
+                  setFilterHans(false)
+                  setFilterBeans(false)
+                  setSelectedCafeName(null)
+                } else {
+                  setSelectedCafeName(null) // Reset cafe sub-filter when enabling cafe filter
+                }
+              }}
+              style={getButtonStyle(filterCafe, '#4CAF50', hasActiveFilter && !filterCafe)}
+            >
+              cafe
+            </button>
+            {(filterManner || filterGrid || filterDozzze || filterHans || filterBeans || filterCafe) && (
               <button
-                onClick={() => setShowDetails(!showDetails)}
+                onClick={() => {
+                  setFilterManner(false)
+                  setFilterGrid(false)
+                  setFilterDozzze(false)
+                  setFilterHans(false)
+                  setFilterBeans(false)
+                  setFilterCafe(false)
+                  setSelectedCafeName(null)
+                  setSelectedBeanMerchant(null)
+                  setFilterEspresso(false)
+                }}
                 style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#28a745',
-                  color: 'white',
+                  background: 'transparent',
                   border: 'none',
-                  borderRadius: '4px',
+                  fontSize: '12px',
+                  color: '#999',
                   cursor: 'pointer',
+                  padding: '6px 16px',
+                  borderRadius: '20px',
+                  fontWeight: 'normal',
                 }}
               >
-                {showDetails ? 'Hide' : 'Show'} Coffee Transactions Details
+                reset
               </button>
-            </div>
-            {showDetails && coffeeTransactions && coffeeTransactions.length > 0 && (
-              <div style={{ marginTop: '15px', maxHeight: '400px', overflowY: 'auto' }}>
-                <h3>Coffee Transactions ({coffeeTransactions.length})</h3>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-                  <thead>
-                    <tr style={{ backgroundColor: '#e9ecef' }}>
-                      <th style={{ padding: '8px', textAlign: 'left', border: '1px solid #dee2e6' }}>Date</th>
-                      <th style={{ padding: '8px', textAlign: 'left', border: '1px solid #dee2e6' }}>Merchant</th>
-                      <th style={{ padding: '8px', textAlign: 'left', border: '1px solid #dee2e6' }}>Description</th>
-                      <th style={{ padding: '8px', textAlign: 'right', border: '1px solid #dee2e6' }}>Amount</th>
-                      <th style={{ padding: '8px', textAlign: 'left', border: '1px solid #dee2e6' }}>Source</th>
-                      <th style={{ padding: '8px', textAlign: 'left', border: '1px solid #dee2e6' }}>Keywords</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {coffeeTransactions
-                      .sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time))
-                      .map((t, i) => (
-                        <tr key={i} style={{ backgroundColor: i % 2 === 0 ? '#fff' : '#f8f9fa' }}>
-                          <td style={{ padding: '8px', border: '1px solid #dee2e6' }}>{t.date} {t.time}</td>
-                          <td style={{ padding: '8px', border: '1px solid #dee2e6' }}>{t.merchant}</td>
-                          <td style={{ padding: '8px', border: '1px solid #dee2e6' }}>{t.description}</td>
-                          <td style={{ padding: '8px', textAlign: 'right', border: '1px solid #dee2e6' }}>¥{t.amount.toFixed(2)}</td>
-                          <td style={{ padding: '8px', border: '1px solid #dee2e6' }}>{t.source}</td>
-                          <td style={{ padding: '8px', border: '1px solid #dee2e6' }}>
-                            {t.matchedKeywords.join(', ') || 'N/A'} ({(t.confidence * 100).toFixed(0)}%)
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
             )}
           </div>
-        ) : (
-          <p>No coffee transactions found.</p>
+          
+          <div style={{
+            fontSize: '12px',
+            color: '#666',
+            marginLeft: 'auto'
+          }}>
+            {filteredStats.count} records, spend ¥{filteredStats.totalSpending.toFixed(2)}
+          </div>
+        </div>
+        
+        {/* Manner espresso sub-filter row */}
+        {filterManner && (
+          <div style={{
+            marginTop: '15px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            flexWrap: 'wrap'
+          }}>
+            <span style={{ fontSize: '12px', color: '#999', marginRight: '5px' }}>type:</span>
+            <button
+              onClick={() => setFilterEspresso(false)}
+              style={{
+                background: !filterEspresso ? '#d32f2f' : 'transparent',
+                border: '1px solid #d32f2f',
+                fontSize: '11px',
+                color: !filterEspresso ? '#fff' : '#d32f2f',
+                cursor: 'pointer',
+                padding: '4px 12px',
+                borderRadius: '15px',
+                fontWeight: 'normal',
+              }}
+            >
+              all
+            </button>
+            <button
+              onClick={() => setFilterEspresso(!filterEspresso)}
+              style={{
+                background: filterEspresso ? '#d32f2f' : 'transparent',
+                border: '1px solid #d32f2f',
+                fontSize: '11px',
+                color: filterEspresso ? '#fff' : '#d32f2f',
+                cursor: 'pointer',
+                padding: '4px 12px',
+                borderRadius: '15px',
+                fontWeight: 'normal',
+              }}
+            >
+              espresso
+            </button>
+          </div>
+        )}
+        
+        {/* Beans sub-filter row */}
+        {filterBeans && (
+          <div style={{
+            marginTop: '15px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            flexWrap: 'wrap'
+          }}>
+            <span style={{ fontSize: '12px', color: '#999', marginRight: '5px' }}>merchants:</span>
+            <button
+              onClick={() => setSelectedBeanMerchant(null)}
+              style={{
+                background: selectedBeanMerchant === null ? '#FF9800' : 'transparent',
+                border: '1px solid #FF9800',
+                fontSize: '11px',
+                color: selectedBeanMerchant === null ? '#fff' : '#FF9800',
+                cursor: 'pointer',
+                padding: '4px 12px',
+                borderRadius: '15px',
+                fontWeight: 'normal',
+              }}
+            >
+              all
+            </button>
+            {getBeanMerchants().map(merchant => (
+              <button
+                key={merchant}
+                onClick={() => setSelectedBeanMerchant(merchant === selectedBeanMerchant ? null : merchant)}
+                style={{
+                  background: selectedBeanMerchant === merchant ? '#FF9800' : 'transparent',
+                  border: '1px solid #FF9800',
+                  fontSize: '11px',
+                  color: selectedBeanMerchant === merchant ? '#fff' : '#FF9800',
+                  cursor: 'pointer',
+                  padding: '4px 12px',
+                  borderRadius: '15px',
+                  fontWeight: 'normal',
+                }}
+              >
+                {merchant.length > 20 ? merchant.substring(0, 20) + '...' : merchant}
+              </button>
+            ))}
+          </div>
+        )}
+        
+        {/* Cafe sub-filter row */}
+        {filterCafe && (
+          <div style={{
+            marginTop: '15px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            flexWrap: 'wrap'
+          }}>
+            <span style={{ fontSize: '12px', color: '#999', marginRight: '5px' }}>cafes:</span>
+            <button
+              onClick={() => setSelectedCafeName(null)}
+              style={{
+                background: selectedCafeName === null ? '#4CAF50' : 'transparent',
+                border: '1px solid #4CAF50',
+                fontSize: '11px',
+                color: selectedCafeName === null ? '#fff' : '#4CAF50',
+                cursor: 'pointer',
+                padding: '4px 12px',
+                borderRadius: '15px',
+                fontWeight: 'normal',
+              }}
+            >
+              all
+            </button>
+            {getCafeNames().map(cafeName => (
+              <button
+                key={cafeName}
+                onClick={() => setSelectedCafeName(cafeName === selectedCafeName ? null : cafeName)}
+                style={{
+                  background: selectedCafeName === cafeName ? '#4CAF50' : 'transparent',
+                  border: '1px solid #4CAF50',
+                  fontSize: '11px',
+                  color: selectedCafeName === cafeName ? '#fff' : '#4CAF50',
+                  cursor: 'pointer',
+                  padding: '4px 12px',
+                  borderRadius: '15px',
+                  fontWeight: 'normal',
+                }}
+              >
+                {cafeName.length > 20 ? cafeName.substring(0, 20) + '...' : cafeName}
+              </button>
+            ))}
+          </div>
         )}
       </div>
+      
+      <YearView 
+        coffeeByDate={filteredCoffeeByDate} 
+        onDateClick={handleDateClick} 
+        year={2025} 
+        highlightColor={
+          activeFilter === 'grid' ? '#8B4513' : 
+          activeFilter === 'dozzze' ? '#666' : 
+          activeFilter === 'hans' ? '#9C27B0' :
+          activeFilter === 'beans' ? '#FF9800' :
+          activeFilter === 'cafe' ? '#4CAF50' :
+          '#d32f2f'
+        } 
+      />
+      
+      {selectedDate && filteredCoffeeByDate[selectedDate] && (
+        <DayDetails
+          date={selectedDate}
+          transactions={filteredCoffeeByDate[selectedDate]}
+          onClose={handleCloseDetails}
+        />
+      )}
     </div>
   )
 }
