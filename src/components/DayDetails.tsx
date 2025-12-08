@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { CoffeeTransaction } from '../types'
 import { format } from 'date-fns'
 
@@ -5,10 +6,77 @@ interface DayDetailsProps {
   date: string
   transactions: CoffeeTransaction[]
   onClose: () => void
+  onDateChange: (date: string) => void
+  availableDates: string[] // All dates that have transactions, sorted
 }
 
-export default function DayDetails({ date, transactions, onClose }: DayDetailsProps) {
+export default function DayDetails({ date, transactions, onClose, onDateChange, availableDates }: DayDetailsProps) {
   const formattedDate = format(new Date(date + 'T00:00:00'), 'EEEE, MMMM d, yyyy')
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+  
+  // Sort transactions by time
+  const sortedTransactions = [...transactions].sort((a, b) => a.time.localeCompare(b.time))
+
+  // Keyboard navigation - navigate between dates
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (availableDates.length === 0) return
+      
+      const currentDateIndex = availableDates.indexOf(date)
+      
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault()
+        e.stopPropagation()
+        if (currentDateIndex > 0) {
+          onDateChange(availableDates[currentDateIndex - 1])
+        } else {
+          // Wrap to last date
+          onDateChange(availableDates[availableDates.length - 1])
+        }
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault()
+        e.stopPropagation()
+        if (currentDateIndex < availableDates.length - 1) {
+          onDateChange(availableDates[currentDateIndex + 1])
+        } else {
+          // Wrap to first date
+          onDateChange(availableDates[0])
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault()
+        e.stopPropagation()
+        onClose()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown, true)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown, true)
+    }
+  }, [date, availableDates, onDateChange, onClose])
+
+  const handleCopy = async (transactionId: string) => {
+    try {
+      await navigator.clipboard.writeText(transactionId)
+      setCopiedId(transactionId)
+      setTimeout(() => setCopiedId(null), 2000) // Reset after 2 seconds
+    } catch (err) {
+      console.error('Failed to copy:', err)
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea')
+      textArea.value = transactionId
+      document.body.appendChild(textArea)
+      textArea.select()
+      try {
+        document.execCommand('copy')
+        setCopiedId(transactionId)
+        setTimeout(() => setCopiedId(null), 2000)
+      } catch (fallbackErr) {
+        console.error('Fallback copy failed:', fallbackErr)
+      }
+      document.body.removeChild(textArea)
+    }
+  }
 
   return (
     <div
@@ -38,6 +106,19 @@ export default function DayDetails({ date, transactions, onClose }: DayDetailsPr
           border: '1px solid #ddd',
         }}
         onClick={(e) => e.stopPropagation()}
+        tabIndex={-1}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowLeft') {
+            e.preventDefault()
+            setCurrentIndex(prev => (prev > 0 ? prev - 1 : sortedTransactions.length - 1))
+          } else if (e.key === 'ArrowRight') {
+            e.preventDefault()
+            setCurrentIndex(prev => (prev < sortedTransactions.length - 1 ? prev + 1 : 0))
+          } else if (e.key === 'Escape') {
+            e.preventDefault()
+            onClose()
+          }
+        }}
       >
         <div style={{ 
           display: 'flex', 
@@ -73,14 +154,12 @@ export default function DayDetails({ date, transactions, onClose }: DayDetailsPr
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {transactions
-            .sort((a, b) => a.time.localeCompare(b.time))
-            .map((transaction, index) => (
+          {sortedTransactions.map((transaction, index) => (
               <div
-                key={index}
+                key={transaction.transactionId || index}
                 style={{
                   padding: '16px 0',
-                  borderBottom: index < transactions.length - 1 ? '1px dotted #e0e0e0' : 'none',
+                  borderBottom: index < sortedTransactions.length - 1 ? '1px dotted #e0e0e0' : 'none',
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
@@ -96,10 +175,40 @@ export default function DayDetails({ date, transactions, onClose }: DayDetailsPr
                   </div>
                 )}
                 
-                <div style={{ display: 'flex', gap: '10px', fontSize: '12px', color: '#999' }}>
-                  <span>{transaction.time}</span>
-                  <span>•</span>
-                  <span style={{ textTransform: 'capitalize' }}>{transaction.source}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: '#999' }}>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <span>{transaction.time}</span>
+                    <span>•</span>
+                    <span style={{ textTransform: 'capitalize' }}>{transaction.source}</span>
+                  </div>
+                  <button
+                    onClick={() => handleCopy(transaction.transactionId)}
+                    style={{
+                      background: copiedId === transaction.transactionId ? '#4CAF50' : 'transparent',
+                      border: 'none',
+                      borderRadius: '4px',
+                      padding: '4px 8px',
+                      cursor: 'pointer',
+                      fontSize: '11px',
+                      color: copiedId === transaction.transactionId ? '#fff' : '#999',
+                      transition: 'all 0.2s ease',
+                      whiteSpace: 'nowrap',
+                      outline: 'none',
+                    }}
+                    onMouseOver={(e) => {
+                      if (copiedId !== transaction.transactionId) {
+                        e.currentTarget.style.color = '#333'
+                      }
+                    }}
+                    onMouseOut={(e) => {
+                      if (copiedId !== transaction.transactionId) {
+                        e.currentTarget.style.color = '#999'
+                      }
+                    }}
+                    title="Copy transaction ID"
+                  >
+                    {copiedId === transaction.transactionId ? 'Copied!' : 'Copy'}
+                  </button>
                 </div>
               </div>
             ))}

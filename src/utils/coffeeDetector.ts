@@ -80,12 +80,28 @@ export function detectCoffee(transaction: Transaction): CoffeeTransaction {
   let confidence = 0
   
   // Check merchant name (handle both Chinese and English)
+  // But exclude restaurants/bars that just happen to have "咖啡" in the name
+  const isRestaurantOrBar = merchant.includes('餐吧') || merchant.includes('餐厅') || 
+                            merchant.includes('饭店') || merchant.includes('餐馆') ||
+                            merchant.includes('精酿') || merchant.includes('bar') ||
+                            merchant.includes('restaurant') || merchant.includes('bistro')
+  
   for (const keyword of COFFEE_KEYWORDS.merchantNames) {
     // For Chinese keywords, check original case; for English, check lowercase
     const merchantToCheck = /[\u4e00-\u9fa5]/.test(keyword) ? merchant : merchantLower
     const keywordToCheck = /[\u4e00-\u9fa5]/.test(keyword) ? keyword : keyword.toLowerCase()
     
     if (merchantToCheck.includes(keywordToCheck)) {
+      // If merchant is a restaurant/bar and only matched "咖啡" in name, 
+      // require coffee-related terms in description to confirm it's a coffee purchase
+      if (isRestaurantOrBar && keyword === '咖啡' && !description.includes('咖啡') && 
+          !description.includes('coffee') && !description.includes('拿铁') && 
+          !description.includes('latte') && !description.includes('美式') &&
+          !description.includes('americano') && !description.includes('卡布') &&
+          !description.includes('cappuccino') && !description.includes('espresso')) {
+        // Skip this match - it's likely not a coffee purchase
+        continue
+      }
       matchedKeywords.push(keyword)
       confidence += 0.8 // High confidence for merchant match
       break
@@ -113,12 +129,43 @@ export function detectCoffee(transaction: Transaction): CoffeeTransaction {
   
   // Check Chinese keywords in merchant, description, and account
   for (const keyword of COFFEE_KEYWORDS.chinese) {
+    // Skip if merchant is a restaurant/bar and only "咖啡" appears in merchant name without coffee terms in description
+    if (keyword === '咖啡' && isRestaurantOrBar && merchant.includes('咖啡') && 
+        !description.includes('咖啡') && !description.includes('coffee') && 
+        !description.includes('拿铁') && !description.includes('latte') && 
+        !description.includes('美式') && !description.includes('americano') && 
+        !description.includes('卡布') && !description.includes('cappuccino') && 
+        !description.includes('espresso')) {
+      continue // Skip this match
+    }
+    
     if (merchant.includes(keyword) || description.includes(keyword) || account.includes(keyword)) {
       if (!matchedKeywords.includes(keyword)) {
         matchedKeywords.push(keyword)
         confidence += 0.7
       }
     }
+  }
+  
+  // Exclude coffee-flavored food items (cookies, cakes, ice cream, etc.)
+  // These are not actual coffee purchases
+  const foodItemKeywords = [
+    '曲奇', 'cookie', 'cookies', '饼干', 'biscuit',
+    '蛋糕', 'cake', '甜品', 'dessert',
+    '冰淇淋', 'ice cream', 'gelato',
+    '面包', 'bread', 'bakery',
+    '巧克力', 'chocolate', 'candy', '糖果',
+    '糖', 'sugar', 'sweet'
+  ]
+  
+  const isFoodItem = foodItemKeywords.some(food => 
+    description.includes(food) || merchant.includes(food)
+  )
+  
+  // If it's a food item and only matched "咖啡" as a flavor, exclude it
+  // But allow if merchant is clearly a coffee shop (high confidence merchant match)
+  if (isFoodItem && confidence < 0.8 && matchedKeywords.length === 1 && matchedKeywords[0] === '咖啡') {
+    confidence = 0 // Exclude coffee-flavored food items
   }
   
   // Normalize confidence to 0-1 range

@@ -649,6 +649,8 @@ function App() {
           date={selectedDate}
           transactions={filteredCoffeeByDate[selectedDate]}
           onClose={handleCloseDetails}
+          onDateChange={setSelectedDate}
+          availableDates={Object.keys(filteredCoffeeByDate).sort()}
         />
       )}
     </div>
