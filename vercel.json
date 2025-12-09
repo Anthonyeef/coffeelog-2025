@@ -2,6 +2,17 @@
   "buildCommand": "VITE_BASE_URL=/ npm run build",
   "outputDirectory": "dist",
   "installCommand": "npm install",
+  "headers": [
+    {
+      "source": "/data/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600"
+        }
+      ]
+    }
+  ],
   "rewrites": [
     {
       "source": "/coffee-2025/(.*)",
