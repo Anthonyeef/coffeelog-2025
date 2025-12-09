@@ -1,0 +1,5 @@
+# Ignore sensitive data files
+alipay-record/
+wechatpay-record/
+public/data/
+

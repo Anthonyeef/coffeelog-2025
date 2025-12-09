@@ -27,3 +27,18 @@ button:focus {
   outline: none;
 }
 
+/* Responsive breakpoints */
+@media (max-width: 768px) {
+  /* Mobile styles */
+  body {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Small mobile styles */
+  body {
+    font-size: 13px;
+  }
+}
+

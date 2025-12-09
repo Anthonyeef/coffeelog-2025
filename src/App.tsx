@@ -3,7 +3,26 @@ import { CoffeeDataByDate, CoffeeStatistics, CoffeeTransaction } from './types'
 import YearView from './components/YearView'
 import DayDetails from './components/DayDetails'
 
+// Hook for responsive breakpoints
+const useMediaQuery = (query: string) => {
+  const [matches, setMatches] = useState(false)
+
+  useEffect(() => {
+    const media = window.matchMedia(query)
+    if (media.matches !== matches) {
+      setMatches(media.matches)
+    }
+    const listener = () => setMatches(media.matches)
+    media.addEventListener('change', listener)
+    return () => media.removeEventListener('change', listener)
+  }, [matches, query])
+
+  return matches
+}
+
 function App() {
+  const isMobile = useMediaQuery('(max-width: 768px)')
+  
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [coffeeTransactions, setCoffeeTransactions] = useState<CoffeeTransaction[]>([])
@@ -27,7 +46,9 @@ function App() {
         setIsLoading(true)
         setError(null)
         
-        const response = await fetch('/data/coffee-data.json')
+        // Use base URL from Vite config (defaults to '/coffee-2025/')
+        const baseUrl = (import.meta as any).env?.BASE_URL || '/coffee-2025/'
+        const response = await fetch(`${baseUrl}data/coffee-data.json`)
         if (!response.ok) {
           throw new Error(`Failed to load data: ${response.statusText}`)
         }
@@ -105,12 +126,11 @@ function App() {
       for (const t of transactions) {
         const merchant = (t.merchant || '').toLowerCase()
         const desc = (t.description || '').toLowerCase()
-        const account = (t.account || '').toLowerCase()
         
         const isChain = chains.some(chain => 
           merchant.includes(chain.toLowerCase()) || 
-          desc.includes(chain.toLowerCase()) || 
-          account.includes(chain.toLowerCase())
+          desc.includes(chain.toLowerCase()) ||
+          (chain.toLowerCase() === 'manner' && t.isMannerAccount === true)
         )
         const isBeans = t.isBeans === true
         const isEquipment = desc.includes('滤纸') || desc.includes('粉碗') || desc.includes('手柄') ||
@@ -163,7 +183,7 @@ function App() {
             t.merchant.toLowerCase().includes('manner') ||
             t.merchant.includes('北京茵赫') ||
             t.merchant.includes('茵赫') ||
-            t.account.toLowerCase().includes('mannercoffee') ||
+            t.isMannerAccount === true ||
             t.matchedKeywords.some(k => k.toLowerCase().includes('manner'))
           
           if (!isManner) return false
@@ -239,7 +259,6 @@ function App() {
           // Exclude chain stores
           const merchant = (t.merchant || '').toLowerCase()
           const desc = (t.description || '').toLowerCase()
-          const account = (t.account || '').toLowerCase()
           
           const isChain = 
             merchant.includes('manner') || merchant.includes('北京茵赫') || merchant.includes('茵赫') ||
@@ -252,7 +271,7 @@ function App() {
             desc.includes('manner') || desc.includes('grid coffee') || desc.includes('starbucks') ||
             desc.includes('luckin') || desc.includes('dozzze') || desc.includes('豆仔') ||
             desc.includes('hans') || desc.includes('憨憨') || desc.includes('白鲸') ||
-            account.includes('mannercoffee') || account.includes('starbucks') || account.includes('luckin')
+            t.isMannerAccount === true
           
           // Exclude bean purchases
           const isBeans = t.isBeans === true
@@ -262,7 +281,16 @@ function App() {
                              desc.includes('咖啡壶') || desc.includes('咖啡杯') || desc.includes('冷萃壶') ||
                              desc.includes('冷泡') || desc.includes('过滤') || desc.includes('咖啡机')
           
-          const isCafe = !isChain && !isBeans && !isEquipment
+          // Exclude delivery orders (food delivery platforms)
+          const isDelivery = merchant.includes('淘宝闪购') || merchant.includes('淘宝') ||
+                            merchant.includes('美团') || merchant.includes('饿了么') ||
+                            merchant.includes('ele.me') || merchant.includes('meituan') ||
+                            desc.includes('淘宝闪购') || desc.includes('外卖订单') ||
+                            desc.includes('美团') || desc.includes('饿了么') ||
+                            desc.includes('ele.me') || desc.includes('meituan') ||
+                            t.isDeliveryAccount === true
+          
+          const isCafe = !isChain && !isBeans && !isEquipment && !isDelivery
           
           // If a specific cafe is selected, filter by cafe name
           if (isCafe && selectedCafeName) {
@@ -282,8 +310,8 @@ function App() {
   }
 
   const filteredCoffeeByDate = getFilteredCoffeeByDate()
-  const activeFilter = filterGrid ? 'grid' : filterManner ? 'manner' : filterDozzze ? 'dozzze' : filterHans ? 'hans' : filterBeans ? 'beans' : null
-  const hasActiveFilter = filterManner || filterGrid || filterDozzze || filterHans || filterBeans
+  const activeFilter = filterGrid ? 'grid' : filterManner ? 'manner' : filterDozzze ? 'dozzze' : filterHans ? 'hans' : filterBeans ? 'beans' : filterCafe ? 'cafe' : null
+  const hasActiveFilter = filterManner || filterGrid || filterDozzze || filterHans || filterBeans || filterCafe
   
   // Helper function to get button style with dim effect
   const getButtonStyle = (isActive: boolean, color: string, isDimmed: boolean) => ({
@@ -331,17 +359,22 @@ function App() {
   }
 
   return (
-    <div style={{ padding: '40px 20px', maxWidth: '1000px', margin: '0 auto' }}>
+    <div style={{ 
+      padding: isMobile ? '15px 10px' : '40px 20px', 
+      maxWidth: '1000px', 
+      margin: '0 auto',
+      width: '100%'
+    }}>
       {/* Header */}
       <div style={{ 
-        marginBottom: '30px',
+        marginBottom: isMobile ? '20px' : '30px',
         borderBottom: '1px solid #ddd',
-        paddingBottom: '20px'
+        paddingBottom: isMobile ? '15px' : '20px'
       }}>
         <h1 style={{ 
-          fontSize: '28px', 
-          fontWeight: 'normal', 
-          marginBottom: '15px',
+          fontSize: isMobile ? '22px' : '28px', 
+          fontWeight: 'bold', 
+          marginBottom: isMobile ? '12px' : '15px',
           color: '#333',
           letterSpacing: '1px'
         }}>
@@ -350,15 +383,17 @@ function App() {
         <div style={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
-          alignItems: 'center',
+          alignItems: isMobile ? 'flex-start' : 'center',
           gap: '10px',
-          flexWrap: 'wrap'
+          flexWrap: 'wrap',
+          flexDirection: isMobile ? 'column' : 'row'
         }}>
           <div style={{ 
             display: 'flex', 
             alignItems: 'center',
-            gap: '10px',
-            flexWrap: 'wrap'
+            gap: isMobile ? '6px' : '10px',
+            flexWrap: 'wrap',
+            width: isMobile ? '100%' : 'auto'
           }}>
             <button
               onClick={() => {
@@ -486,9 +521,11 @@ function App() {
           </div>
           
           <div style={{
-            fontSize: '12px',
+            fontSize: isMobile ? '11px' : '12px',
             color: '#666',
-            marginLeft: 'auto'
+            marginLeft: isMobile ? '0' : 'auto',
+            marginTop: isMobile ? '10px' : '0',
+            width: isMobile ? '100%' : 'auto'
           }}>
             {filteredStats.count} records, spend ¥{filteredStats.totalSpending.toFixed(2)}
           </div>

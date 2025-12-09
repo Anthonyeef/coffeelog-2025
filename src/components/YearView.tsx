@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay } from 'date-fns'
 import { CoffeeDataByDate } from '../types'
 
@@ -8,7 +9,26 @@ interface YearViewProps {
   highlightColor?: string
 }
 
+// Hook for responsive breakpoints
+const useMediaQuery = (query: string) => {
+  const [matches, setMatches] = useState(false)
+
+  useEffect(() => {
+    const media = window.matchMedia(query)
+    if (media.matches !== matches) {
+      setMatches(media.matches)
+    }
+    const listener = () => setMatches(media.matches)
+    media.addEventListener('change', listener)
+    return () => media.removeEventListener('change', listener)
+  }, [matches, query])
+
+  return matches
+}
+
 export default function YearView({ coffeeByDate, onDateClick, year, highlightColor = '#d32f2f' }: YearViewProps) {
+  const isMobile = useMediaQuery('(max-width: 768px)')
+  const isSmallMobile = useMediaQuery('(max-width: 480px)')
   const months = Array.from({ length: 12 }, (_, i) => new Date(year, i, 1))
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -39,15 +59,27 @@ export default function YearView({ coffeeByDate, onDateClick, year, highlightCol
     return isCurrentMonth && hasCoffee
   }
 
+  // Responsive grid columns
+  const getGridColumns = () => {
+    if (isSmallMobile) return '1fr' // 1 column on small mobile
+    if (isMobile) return 'repeat(2, 1fr)' // 2 columns on tablet
+    return 'repeat(3, 1fr)' // 3 columns on desktop
+  }
+
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '20px 0' }}>
+    <div style={{ 
+      maxWidth: '900px', 
+      margin: '0 auto', 
+      padding: isMobile ? '10px 5px' : '20px 0',
+      width: '100%'
+    }}>
 
       {/* 12 Months Grid */}
       <div style={{ 
         display: 'grid', 
-        gridTemplateColumns: 'repeat(3, 1fr)', 
-        gap: '30px 20px',
-        marginBottom: '30px'
+        gridTemplateColumns: getGridColumns(), 
+        gap: isMobile ? '20px 10px' : '30px 20px',
+        marginBottom: isMobile ? '20px' : '30px'
       }}>
         {months.map((monthDate) => {
           const monthStart = startOfMonth(monthDate)
@@ -70,8 +102,8 @@ export default function YearView({ coffeeByDate, onDateClick, year, highlightCol
               }}>
                 <h3 style={{ 
                   margin: 0, 
-                  fontSize: '16px', 
-                  fontWeight: 'normal', 
+                  fontSize: isMobile ? '14px' : '16px', 
+                  fontWeight: 'bold', 
                   color: '#333',
                   textAlign: 'center'
                 }}>

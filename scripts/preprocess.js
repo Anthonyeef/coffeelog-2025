@@ -26,6 +26,8 @@ const COFFEE_KEYWORDS = {
     '北京茵赫餐饮管理有限公司', '茵赫', // Manner Coffee official company name
     '豆子咖啡实验室', '豆仔', // 豆仔 coffee shop
     '白鲸咖啡', '白鲸', // 白鲸咖啡 (White Whale Coffee) - bean roaster
+    'the common cup', 'common cup', // The Common Cup coffee shop
+    'cup', // Common word in coffee shop names
   ],
 };
 
@@ -147,12 +149,55 @@ function detectCoffee(transaction) {
   const allText = (merchant + ' ' + description + ' ' + account).toLowerCase();
   
   // Check for "豆" (bean) keyword - must be part of "咖啡豆" or standalone "豆" but not just "咖啡"
-  const hasBeanKeyword = description.includes('咖啡豆') || merchant.includes('咖啡豆') ||
-                         (description.includes('豆') && !description.includes('咖啡店') && !description.includes('咖啡厅') && !description.includes('咖啡·')) ||
-                         (merchant.includes('豆') && !merchant.includes('咖啡店') && !merchant.includes('咖啡厅'));
+  // Exclude "豆" when it's part of cafe names like "豆子咖啡实验室" (DOzzZE豆仔), "豆仔", etc.
+  const isCafeWithBeanInName = merchant.includes('豆子咖啡实验室') || merchant.includes('豆仔') || 
+                               merchant.includes('DOzzZE') || merchant.includes('咖啡实验室') ||
+                               description.includes('豆子咖啡实验室') || description.includes('豆仔') ||
+                               description.includes('DOzzZE') || description.includes('咖啡实验室');
   
-  const isBeans = isCoffee && (isBaijing || hasBeanKeyword || beanKeywords.some(keyword => {
+  // Exclude "咖啡豆" when it's part of a shop/cafe name (e.g., "咖啡豆买手店", "咖啡豆店", "咖啡豆馆")
+  // Only consider it beans if it's an actual product description
+  const isCoffeeBeanShop = (merchant.includes('咖啡豆买手店') || merchant.includes('咖啡豆店') || 
+                            merchant.includes('咖啡豆馆') || merchant.includes('咖啡豆馆') ||
+                            description.includes('咖啡豆买手店') || description.includes('咖啡豆店') ||
+                            description.includes('咖啡豆馆'));
+  
+  const hasBeanKeyword = (!isCoffeeBeanShop && (description.includes('咖啡豆') || merchant.includes('咖啡豆'))) ||
+                         (description.includes('豆') && !description.includes('咖啡店') && !description.includes('咖啡厅') && !description.includes('咖啡·') && !isCafeWithBeanInName) ||
+                         (merchant.includes('豆') && !merchant.includes('咖啡店') && !merchant.includes('咖啡厅') && !isCafeWithBeanInName);
+  
+  // Exclude "手冲" (pour-over) when it's part of a cafe name (e.g., "手冲咖啡店", "手冲咖啡")
+  // Only consider it a bean keyword when it's in bean-related context (e.g., "手冲豆", "手冲咖啡豆")
+  const isPourOverCafe = (merchant.includes('手冲咖啡店') || merchant.includes('手冲咖啡') || 
+                          description.includes('手冲咖啡店') || description.includes('手冲咖啡')) &&
+                         !description.includes('豆') && !merchant.includes('豆');
+  
+  // Exclude "拼配" (blend) when it's followed by drink names (e.g., "拼配美式", "拼配拿铁")
+  const isBlendDrink = description.includes('拼配美式') || description.includes('拼配拿铁') || 
+                       description.includes('拼配卡布') || description.includes('拼配澳白') ||
+                       description.includes('拼配dirty') || description.includes('拼配Dirty') ||
+                       merchant.includes('拼配美式') || merchant.includes('拼配拿铁');
+  
+  const isBeans = isCoffee && !isPourOverCafe && !isCoffeeBeanShop && (isBaijing || hasBeanKeyword || beanKeywords.some(keyword => {
     const keywordLower = keyword.toLowerCase();
+    // Skip "手冲" if it's part of a cafe name
+    if (keyword === '手冲' || keyword === 'pour over') {
+      if (isPourOverCafe) {
+        return false;
+      }
+      // Only consider "手冲" as bean keyword if it's with bean-related terms
+      return (description.includes('手冲豆') || description.includes('手冲咖啡豆') || 
+              merchant.includes('手冲豆') || merchant.includes('手冲咖啡豆'));
+    }
+    // Skip "拼配" if it's part of a drink name
+    if (keyword === '拼配' || keyword === 'blend') {
+      if (isBlendDrink) {
+        return false;
+      }
+      // Only consider "拼配" as bean keyword if it's with bean-related terms (e.g., "拼配豆", "拼配咖啡豆")
+      return (description.includes('拼配豆') || description.includes('拼配咖啡豆') || 
+              merchant.includes('拼配豆') || merchant.includes('拼配咖啡豆'));
+    }
     // For weight measurements, check if they appear as part of a weight (e.g., "100g", "250g")
     if (keyword.includes('g') || keyword === 'kg') {
       // Match weight patterns like "100g", "250g", "kg", etc.
@@ -444,13 +489,36 @@ const coffeeTransactions = [];
 for (const transaction of allTransactions) {
   const { isCoffee, confidence, matchedKeywords, isBeans } = detectCoffee(transaction);
   if (isCoffee) {
-    coffeeTransactions.push({
-      ...transaction,
+    // Extract account-based flags before removing sensitive data
+    const account = (transaction.account || '').toLowerCase();
+    const isMannerAccount = account.includes('mannercoffee');
+    const isDeliveryAccount = account.includes('alibaba-inc.com') || account.includes('meituan');
+    
+    // Sanitize transaction - remove sensitive fields
+    const sanitizedTransaction = {
+      date: transaction.date,
+      time: transaction.time,
+      datetime: transaction.datetime,
+      category: transaction.category,
+      merchant: transaction.merchant,
+      description: transaction.description,
+      type: transaction.type,
+      amount: transaction.amount,
+      paymentMethod: transaction.paymentMethod,
+      status: transaction.status,
+      source: transaction.source,
+      // Remove: transactionId, account, merchantOrderId, note
+      // Add flags instead
+      isMannerAccount,
+      isDeliveryAccount,
+      // Coffee detection results
       isCoffee: true,
       confidence,
       matchedKeywords,
       isBeans: isBeans || false,
-    });
+    };
+    
+    coffeeTransactions.push(sanitizedTransaction);
   }
 }
 
