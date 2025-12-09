@@ -46,13 +46,9 @@ function App() {
         setIsLoading(true)
         setError(null)
         
-        // Detect base path from current location or use Vite's BASE_URL
-        // This works for both direct Vercel access (/) and proxied access (/coffee-2025/)
-        const baseUrl = (import.meta as any).env?.BASE_URL || 
-                       (window.location.pathname.startsWith('/coffee-2025') ? '/coffee-2025/' : '/')
-        const dataPath = `${baseUrl}data/coffee-data.json`
-        console.log('Fetching data from:', dataPath) // Debug log
-        const response = await fetch(dataPath)
+        // Use BASE_URL from Vite build (defaults to '/')
+        const baseUrl = (import.meta as any).env?.BASE_URL || '/'
+        const response = await fetch(`${baseUrl}data/coffee-data.json`)
         if (!response.ok) {
           throw new Error(`Failed to load data: ${response.statusText}`)
         }
