@@ -25,9 +25,9 @@ function App() {
   
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [coffeeTransactions, setCoffeeTransactions] = useState<CoffeeTransaction[]>([])
+  const [, setCoffeeTransactions] = useState<CoffeeTransaction[]>([])
   const [coffeeByDate, setCoffeeByDate] = useState<CoffeeDataByDate>({})
-  const [statistics, setStatistics] = useState<CoffeeStatistics | null>(null)
+  const [, setStatistics] = useState<CoffeeStatistics | null>(null)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [filterManner, setFilterManner] = useState(false)
   const [filterGrid, setFilterGrid] = useState(false)

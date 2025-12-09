@@ -124,7 +124,7 @@ export default function CalendarView({ coffeeByDate, onDateClick }: CalendarView
 
         {/* Calendar Days */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
-          {calendarDays.map((day, index) => {
+          {calendarDays.map((day) => {
             const isCurrentMonth = isSameMonth(day, currentDate)
             const hasCoffee = isCoffeeDate(day)
             const coffeeCount = getCoffeeCount(day)

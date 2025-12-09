@@ -10,6 +10,11 @@ export interface Transaction {
   paymentMethod: string; // 收/付款方式
   status: string; // 交易状态
   source: 'alipay' | 'wechatpay'; // Payment source
+  // Optional fields used during preprocessing (removed from final sanitized data)
+  account?: string; // 对方账号 (used during preprocessing only)
+  transactionId?: string; // 交易订单号 (used during preprocessing only)
+  merchantOrderId?: string; // 商家订单号 (used during preprocessing only)
+  note?: string; // 备注 (used during preprocessing only)
   // Account-based flags (extracted during preprocessing, account field removed for privacy)
   isMannerAccount?: boolean; // True if account contains mannercoffee domain
   isDeliveryAccount?: boolean; // True if account indicates delivery platform
