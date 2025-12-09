@@ -93,12 +93,14 @@ export default function DayDetails({ date, transactions, onClose, onDateChange, 
           backgroundColor: '#fff',
           borderRadius: '0',
           padding: isMobile ? '20px 15px' : '30px',
-          maxWidth: isMobile ? '100%' : '600px',
-          maxHeight: isMobile ? '100vh' : '80vh',
+          maxWidth: isMobile ? 'calc(100% - 40px)' : '600px',
+          maxHeight: isMobile ? 'calc(100vh - 40px)' : '80vh',
           overflowY: 'auto',
-          width: isMobile ? '100%' : '90%',
-          height: isMobile ? '100%' : 'auto',
+          width: isMobile ? 'calc(100% - 40px)' : '90%',
+          minWidth: isMobile ? '280px' : 'auto',
+          height: isMobile ? 'auto' : 'auto',
           border: '1px solid #ddd',
+          margin: isMobile ? '20px' : '0',
         }}
         onClick={(e) => e.stopPropagation()}
         tabIndex={-1}
