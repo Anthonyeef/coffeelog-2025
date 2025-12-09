@@ -15,8 +15,8 @@
   ],
   "rewrites": [
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "source": "/coffee-2025/(.*)",
+      "destination": "/coffee-2025/index.html"
     }
   ]
 }
