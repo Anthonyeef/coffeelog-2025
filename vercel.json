@@ -4,7 +4,7 @@
   "installCommand": "npm install",
   "headers": [
     {
-      "source": "/data/(.*)",
+      "source": "/coffee-2025/data/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
@@ -15,7 +15,19 @@
   ],
   "rewrites": [
     {
+      "source": "/coffee-2025/assets/(.*)",
+      "destination": "/assets/$1"
+    },
+    {
+      "source": "/coffee-2025/data/(.*)",
+      "destination": "/data/$1"
+    },
+    {
       "source": "/coffee-2025/(.*)",
+      "destination": "/coffee-2025/index.html"
+    },
+    {
+      "source": "/coffee-2025",
       "destination": "/coffee-2025/index.html"
     }
   ]
