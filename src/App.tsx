@@ -46,8 +46,10 @@ function App() {
         setIsLoading(true)
         setError(null)
         
-        // Use base URL from Vite config (defaults to '/coffee-2025/')
-        const baseUrl = (import.meta as any).env?.BASE_URL || '/coffee-2025/'
+        // Use base URL from Vite config
+        // When accessed directly on Vercel: BASE_URL is '/'
+        // When proxied through blog: BASE_URL is '/coffee-2025/'
+        const baseUrl = (import.meta as any).env?.BASE_URL || '/'
         const response = await fetch(`${baseUrl}data/coffee-data.json`)
         if (!response.ok) {
           throw new Error(`Failed to load data: ${response.statusText}`)
