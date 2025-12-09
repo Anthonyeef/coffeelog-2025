@@ -46,11 +46,10 @@ function App() {
         setIsLoading(true)
         setError(null)
         
-        // Use base URL from Vite config
-        // When accessed directly on Vercel: BASE_URL is '/'
-        // When proxied through blog: BASE_URL is '/coffee-2025/'
-        const baseUrl = (import.meta as any).env?.BASE_URL || '/'
-        const response = await fetch(`${baseUrl}data/coffee-data.json`)
+        // Use relative path for data file to work in both direct and proxied access
+        // When accessed directly on Vercel: works from root
+        // When proxied through blog at /coffee-2025/: works relative to current path
+        const response = await fetch('./data/coffee-data.json')
         if (!response.ok) {
           throw new Error(`Failed to load data: ${response.statusText}`)
         }
