@@ -45,5 +45,7 @@ public/alipay-record/
 public/wechatpay-record/
 
 # Preprocessed data (generated from raw files)
-public/data/
+# Note: coffee-data.json is sanitized (no sensitive fields) and is committed for deployment
+public/data/*
+!public/data/coffee-data.json
 
