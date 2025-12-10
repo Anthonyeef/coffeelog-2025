@@ -367,9 +367,14 @@ function App() {
     }}>
       {/* Header */}
       <div style={{ 
+        position: 'sticky',
+        top: 0,
+        zIndex: 100,
+        backgroundColor: '#fff',
         marginBottom: isMobile ? '20px' : '30px',
         borderBottom: '1px solid #ddd',
-        paddingBottom: isMobile ? '15px' : '20px'
+        paddingBottom: isMobile ? '15px' : '20px',
+        paddingTop: isMobile ? '10px' : '15px'
       }}>
         <h1 style={{ 
           fontSize: isMobile ? '22px' : '28px', 
