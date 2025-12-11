@@ -28,6 +28,7 @@ const COFFEE_KEYWORDS = {
     '白鲸咖啡', '白鲸', // 白鲸咖啡 (White Whale Coffee) - bean roaster
     'the common cup', 'common cup', // The Common Cup coffee shop
     'cup', // Common word in coffee shop names
+    '余温', // 余温 coffee shop
   ],
 };
 

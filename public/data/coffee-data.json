@@ -3640,6 +3640,69 @@
     },
     {
       "date": "2025-12-05",
+      "time": "13:45:49",
+      "datetime": "2025-12-05 13:45:49",
+      "category": "商户消费",
+      "merchant": "鲤城区余温饮品店",
+      "description": "鲤城区余温饮品店",
+      "type": "支出",
+      "amount": 145,
+      "paymentMethod": "汇丰银行信用卡(8097)",
+      "status": "支付成功",
+      "source": "wechatpay",
+      "isMannerAccount": false,
+      "isDeliveryAccount": false,
+      "isCoffee": true,
+      "confidence": 0.8,
+      "matchedKeywords": [
+        "余温"
+      ],
+      "isBeans": false
+    },
+    {
+      "date": "2025-12-05",
+      "time": "13:35:00",
+      "datetime": "2025-12-05 13:35:00",
+      "category": "商户消费",
+      "merchant": "鲤城区余温饮品店",
+      "description": "鲤城区余温饮品店",
+      "type": "支出",
+      "amount": 30,
+      "paymentMethod": "零钱",
+      "status": "支付成功",
+      "source": "wechatpay",
+      "isMannerAccount": false,
+      "isDeliveryAccount": false,
+      "isCoffee": true,
+      "confidence": 0.8,
+      "matchedKeywords": [
+        "余温"
+      ],
+      "isBeans": false
+    },
+    {
+      "date": "2025-12-05",
+      "time": "13:09:24",
+      "datetime": "2025-12-05 13:09:24",
+      "category": "商户消费",
+      "merchant": "鲤城区余温饮品店",
+      "description": "鲤城区余温饮品店",
+      "type": "支出",
+      "amount": 35,
+      "paymentMethod": "汇丰银行信用卡(8097)",
+      "status": "支付成功",
+      "source": "wechatpay",
+      "isMannerAccount": false,
+      "isDeliveryAccount": false,
+      "isCoffee": true,
+      "confidence": 0.8,
+      "matchedKeywords": [
+        "余温"
+      ],
+      "isBeans": false
+    },
+    {
+      "date": "2025-12-05",
       "time": "11:23:20",
       "datetime": "2025-12-05 11:23:20",
       "category": "商户消费",
@@ -7610,17 +7673,80 @@
           "咖啡"
         ],
         "isBeans": false
+      },
+      {
+        "date": "2025-12-05",
+        "time": "13:09:24",
+        "datetime": "2025-12-05 13:09:24",
+        "category": "商户消费",
+        "merchant": "鲤城区余温饮品店",
+        "description": "鲤城区余温饮品店",
+        "type": "支出",
+        "amount": 35,
+        "paymentMethod": "汇丰银行信用卡(8097)",
+        "status": "支付成功",
+        "source": "wechatpay",
+        "isMannerAccount": false,
+        "isDeliveryAccount": false,
+        "isCoffee": true,
+        "confidence": 0.8,
+        "matchedKeywords": [
+          "余温"
+        ],
+        "isBeans": false
+      },
+      {
+        "date": "2025-12-05",
+        "time": "13:35:00",
+        "datetime": "2025-12-05 13:35:00",
+        "category": "商户消费",
+        "merchant": "鲤城区余温饮品店",
+        "description": "鲤城区余温饮品店",
+        "type": "支出",
+        "amount": 30,
+        "paymentMethod": "零钱",
+        "status": "支付成功",
+        "source": "wechatpay",
+        "isMannerAccount": false,
+        "isDeliveryAccount": false,
+        "isCoffee": true,
+        "confidence": 0.8,
+        "matchedKeywords": [
+          "余温"
+        ],
+        "isBeans": false
+      },
+      {
+        "date": "2025-12-05",
+        "time": "13:45:49",
+        "datetime": "2025-12-05 13:45:49",
+        "category": "商户消费",
+        "merchant": "鲤城区余温饮品店",
+        "description": "鲤城区余温饮品店",
+        "type": "支出",
+        "amount": 145,
+        "paymentMethod": "汇丰银行信用卡(8097)",
+        "status": "支付成功",
+        "source": "wechatpay",
+        "isMannerAccount": false,
+        "isDeliveryAccount": false,
+        "isCoffee": true,
+        "confidence": 0.8,
+        "matchedKeywords": [
+          "余温"
+        ],
+        "isBeans": false
       }
     ]
   },
   "statistics": {
-    "totalPurchases": 164,
-    "totalSpending": 5831.649999999998,
-    "averagePerMonth": 13.666666666666666,
-    "averagePerWeek": 3.1562740569668977,
+    "totalPurchases": 167,
+    "totalSpending": 6041.649999999998,
+    "averagePerMonth": 13.916666666666666,
+    "averagePerWeek": 3.21401077752117,
     "mostFrequentShop": "北京北投潮街店",
     "purchaseFrequency": {
-      "2025-12": 9,
+      "2025-12": 12,
       "2025-11": 14,
       "2025-10": 21,
       "2025-09": 18,
@@ -7634,5 +7760,5 @@
       "2025-01": 4
     }
   },
-  "processedAt": "2025-12-09T04:09:29.072Z"
+  "processedAt": "2025-12-11T15:45:40.229Z"
 }

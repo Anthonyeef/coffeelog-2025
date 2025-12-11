@@ -67,6 +67,7 @@ const COFFEE_KEYWORDS = {
     'the common cup',
     'common cup', // The Common Cup coffee shop
     'cup', // Common word in coffee shop names
+    '余温', // 余温 coffee shop
   ],
 }
 

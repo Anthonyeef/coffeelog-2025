@@ -35,6 +35,8 @@ function App() {
   const [filterHans, setFilterHans] = useState(false)
   const [filterBeans, setFilterBeans] = useState(false)
   const [filterCafe, setFilterCafe] = useState(false)
+  const [filterPin3, setFilterPin3] = useState(false)
+  const [filterYuwen, setFilterYuwen] = useState(false)
   const [selectedCafeName, setSelectedCafeName] = useState<string | null>(null)
   const [selectedBeanMerchant, setSelectedBeanMerchant] = useState<string | null>(null)
   const [filterEspresso, setFilterEspresso] = useState(false)
@@ -167,9 +169,9 @@ function App() {
     return Array.from(merchants).sort()
   }
 
-  // Filter coffee data by Manner, Grid, DOzzZE豆仔, Hans coffee, Beans, or Cafe if filters are enabled
+  // Filter coffee data by Manner, Grid, DOzzZE豆仔, Hans coffee, Beans, Cafe, Pin3, or Yuwen if filters are enabled
   const getFilteredCoffeeByDate = (): CoffeeDataByDate => {
-    if (!filterManner && !filterGrid && !filterDozzze && !filterHans && !filterBeans && !filterCafe) {
+    if (!filterManner && !filterGrid && !filterDozzze && !filterHans && !filterBeans && !filterCafe && !filterPin3 && !filterYuwen) {
       return coffeeByDate
     }
     
@@ -268,9 +270,13 @@ function App() {
             merchant.includes('dozzze') || merchant.includes('豆仔') ||
             merchant.includes('hans') || merchant.includes('憨憨') ||
             merchant.includes('白鲸') ||
+            merchant.includes('pin3') || merchant.includes('Pin3') ||
+            merchant.includes('余温') ||
             desc.includes('manner') || desc.includes('grid coffee') || desc.includes('starbucks') ||
             desc.includes('luckin') || desc.includes('dozzze') || desc.includes('豆仔') ||
             desc.includes('hans') || desc.includes('憨憨') || desc.includes('白鲸') ||
+            desc.includes('pin3') || desc.includes('Pin3') || desc.includes('PIN·3') ||
+            desc.includes('余温') ||
             t.isMannerAccount === true
           
           // Exclude bean purchases
@@ -302,6 +308,23 @@ function App() {
         })
       }
       
+      if (filterPin3) {
+        filteredTransactions = filteredTransactions.filter(t => 
+          t.merchant.includes('Pin3') ||
+          t.merchant.includes('pin3') ||
+          t.description.includes('Pin3') ||
+          t.description.includes('pin3') ||
+          t.description.includes('PIN·3')
+        )
+      }
+      
+      if (filterYuwen) {
+        filteredTransactions = filteredTransactions.filter(t => 
+          t.merchant.includes('余温') ||
+          t.description.includes('余温')
+        )
+      }
+      
       if (filteredTransactions.length > 0) {
         filtered[date] = filteredTransactions
       }
@@ -310,8 +333,8 @@ function App() {
   }
 
   const filteredCoffeeByDate = getFilteredCoffeeByDate()
-  const activeFilter = filterGrid ? 'grid' : filterManner ? 'manner' : filterDozzze ? 'dozzze' : filterHans ? 'hans' : filterBeans ? 'beans' : filterCafe ? 'cafe' : null
-  const hasActiveFilter = filterManner || filterGrid || filterDozzze || filterHans || filterBeans || filterCafe
+  const activeFilter = filterGrid ? 'grid' : filterManner ? 'manner' : filterDozzze ? 'dozzze' : filterHans ? 'hans' : filterBeans ? 'beans' : filterCafe ? 'cafe' : filterPin3 ? 'pin3' : filterYuwen ? 'yuwen' : null
+  const hasActiveFilter = filterManner || filterGrid || filterDozzze || filterHans || filterBeans || filterCafe || filterPin3 || filterYuwen
   
   // Helper function to get button style with dim effect
   const getButtonStyle = (isActive: boolean, color: string, isDimmed: boolean) => ({
@@ -409,6 +432,8 @@ function App() {
                   setFilterHans(false)
                   setFilterBeans(false)
                   setFilterCafe(false)
+                  setFilterPin3(false)
+                  setFilterYuwen(false)
                   setFilterEspresso(false)
                 } else {
                   setFilterEspresso(false) // Reset espresso filter when enabling manner filter
@@ -427,6 +452,8 @@ function App() {
                   setFilterHans(false)
                   setFilterBeans(false)
                   setFilterCafe(false)
+                  setFilterPin3(false)
+                  setFilterYuwen(false)
                 }
               }}
               style={getButtonStyle(filterGrid, '#8B4513', hasActiveFilter && !filterGrid)}
@@ -442,6 +469,8 @@ function App() {
                   setFilterHans(false)
                   setFilterBeans(false)
                   setFilterCafe(false)
+                  setFilterPin3(false)
+                  setFilterYuwen(false)
                 }
               }}
               style={getButtonStyle(filterDozzze, '#666', hasActiveFilter && !filterDozzze)}
@@ -457,6 +486,8 @@ function App() {
                   setFilterDozzze(false)
                   setFilterBeans(false)
                   setFilterCafe(false)
+                  setFilterPin3(false)
+                  setFilterYuwen(false)
                 }
               }}
               style={getButtonStyle(filterHans, '#9C27B0', hasActiveFilter && !filterHans)}
@@ -472,6 +503,8 @@ function App() {
                   setFilterDozzze(false)
                   setFilterHans(false)
                   setFilterCafe(false)
+                  setFilterPin3(false)
+                  setFilterYuwen(false)
                 }
               }}
               style={getButtonStyle(filterBeans, '#FF9800', hasActiveFilter && !filterBeans)}
@@ -487,6 +520,8 @@ function App() {
                   setFilterDozzze(false)
                   setFilterHans(false)
                   setFilterBeans(false)
+                  setFilterPin3(false)
+                  setFilterYuwen(false)
                   setSelectedCafeName(null)
                 } else {
                   setSelectedCafeName(null) // Reset cafe sub-filter when enabling cafe filter
@@ -496,7 +531,41 @@ function App() {
             >
               cafe
             </button>
-            {(filterManner || filterGrid || filterDozzze || filterHans || filterBeans || filterCafe) && (
+            <button
+              onClick={() => {
+                setFilterPin3(!filterPin3)
+                if (!filterPin3) {
+                  setFilterManner(false)
+                  setFilterGrid(false)
+                  setFilterDozzze(false)
+                  setFilterHans(false)
+                  setFilterBeans(false)
+                  setFilterCafe(false)
+                  setFilterYuwen(false)
+                }
+              }}
+              style={getButtonStyle(filterPin3, '#795548', hasActiveFilter && !filterPin3)}
+            >
+              pin3
+            </button>
+            <button
+              onClick={() => {
+                setFilterYuwen(!filterYuwen)
+                if (!filterYuwen) {
+                  setFilterManner(false)
+                  setFilterGrid(false)
+                  setFilterDozzze(false)
+                  setFilterHans(false)
+                  setFilterBeans(false)
+                  setFilterCafe(false)
+                  setFilterPin3(false)
+                }
+              }}
+              style={getButtonStyle(filterYuwen, '#607D8B', hasActiveFilter && !filterYuwen)}
+            >
+              余温
+            </button>
+            {(filterManner || filterGrid || filterDozzze || filterHans || filterBeans || filterCafe || filterPin3 || filterYuwen) && (
               <button
                 onClick={() => {
                   setFilterManner(false)
@@ -505,6 +574,8 @@ function App() {
                   setFilterHans(false)
                   setFilterBeans(false)
                   setFilterCafe(false)
+                  setFilterPin3(false)
+                  setFilterYuwen(false)
                   setSelectedCafeName(null)
                   setSelectedBeanMerchant(null)
                   setFilterEspresso(false)
@@ -682,6 +753,8 @@ function App() {
           activeFilter === 'hans' ? '#9C27B0' :
           activeFilter === 'beans' ? '#FF9800' :
           activeFilter === 'cafe' ? '#4CAF50' :
+          activeFilter === 'pin3' ? '#795548' :
+          activeFilter === 'yuwen' ? '#607D8B' :
           '#d32f2f'
         } 
       />
