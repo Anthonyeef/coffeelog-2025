@@ -41,3 +41,38 @@ export interface CoffeeStatistics {
   purchaseFrequency: { [month: string]: number };
 }
 
+// Coffee Code Explainer Types
+export type CoffeeLetter = 'D' | 'L' | 'S' | 'W' | 'C';
+export type CoffeeNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+
+export interface CoffeeCode {
+  letter: CoffeeLetter;
+  number1: CoffeeNumber;
+  number2: CoffeeNumber;
+}
+
+export interface LetterCategory {
+  letter: CoffeeLetter;
+  englishTitle: string;
+  chineseTitle: string;
+  description: string;
+  backgroundColor: string;
+  textColor: string;
+}
+
+export interface FlavorCategory {
+  number: CoffeeNumber;
+  chineseName: string;
+  englishName: string;
+  description?: string;
+}
+
+export interface CoffeeProduct {
+  code: string; // e.g., "L23"
+  chineseName: string; // e.g., "埃塞俄比亚 古吉"
+  englishName: string; // e.g., "Ethiopia Guji"
+  letter: CoffeeLetter;
+  number1: CoffeeNumber;
+  number2: CoffeeNumber;
+}
+
