@@ -7,6 +7,8 @@ import iconv from 'iconv-lite';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+console.log('Preprocess script loaded');
+
 // Coffee detection keywords
 const COFFEE_KEYWORDS = {
   english: [
@@ -37,30 +39,30 @@ function detectCoffee(transaction) {
   const merchantLower = merchant.toLowerCase();
   const description = (transaction.description || '').toLowerCase();
   const account = (transaction.account || '').toLowerCase(); // Also check account field
-  
+
   const matchedKeywords = [];
   let confidence = 0;
-  
+
   // Check merchant name (handle both Chinese and English)
   // But exclude restaurants/bars that just happen to have "咖啡" in the name
-  const isRestaurantOrBar = merchant.includes('餐吧') || merchant.includes('餐厅') || 
-                            merchant.includes('饭店') || merchant.includes('餐馆') ||
-                            merchant.includes('精酿') || merchant.includes('bar') ||
-                            merchant.includes('restaurant') || merchant.includes('bistro');
-  
+  const isRestaurantOrBar = merchant.includes('餐吧') || merchant.includes('餐厅') ||
+    merchant.includes('饭店') || merchant.includes('餐馆') ||
+    merchant.includes('精酿') || merchant.includes('bar') ||
+    merchant.includes('restaurant') || merchant.includes('bistro');
+
   for (const keyword of COFFEE_KEYWORDS.merchantNames) {
     // For Chinese keywords, check original case; for English, check lowercase
     const merchantToCheck = /[\u4e00-\u9fa5]/.test(keyword) ? merchant : merchantLower;
     const keywordToCheck = /[\u4e00-\u9fa5]/.test(keyword) ? keyword : keyword.toLowerCase();
-    
+
     if (merchantToCheck.includes(keywordToCheck)) {
       // If merchant is a restaurant/bar and only matched "咖啡" in name, 
       // require coffee-related terms in description to confirm it's a coffee purchase
-      if (isRestaurantOrBar && keyword === '咖啡' && !description.includes('咖啡') && 
-          !description.includes('coffee') && !description.includes('拿铁') && 
-          !description.includes('latte') && !description.includes('美式') &&
-          !description.includes('americano') && !description.includes('卡布') &&
-          !description.includes('cappuccino') && !description.includes('espresso')) {
+      if (isRestaurantOrBar && keyword === '咖啡' && !description.includes('咖啡') &&
+        !description.includes('coffee') && !description.includes('拿铁') &&
+        !description.includes('latte') && !description.includes('美式') &&
+        !description.includes('americano') && !description.includes('卡布') &&
+        !description.includes('cappuccino') && !description.includes('espresso')) {
         // Skip this match - it's likely not a coffee purchase
         continue;
       }
@@ -69,7 +71,7 @@ function detectCoffee(transaction) {
       break;
     }
   }
-  
+
   // Check account field for coffee-related domains/emails (e.g., mannercoffee.com.cn)
   if (account.includes('mannercoffee') || account.includes('starbucks') || account.includes('luckin') || account.includes('coffee')) {
     if (!matchedKeywords.some(k => k.toLowerCase().includes('manner') || k.toLowerCase().includes('coffee'))) {
@@ -77,7 +79,7 @@ function detectCoffee(transaction) {
       confidence += 0.9; // High confidence for domain match
     }
   }
-  
+
   // Check English keywords in merchant, description, and account
   for (const keyword of COFFEE_KEYWORDS.english) {
     const keywordLower = keyword.toLowerCase();
@@ -88,19 +90,19 @@ function detectCoffee(transaction) {
       }
     }
   }
-  
+
   // Check Chinese keywords in merchant, description, and account
   for (const keyword of COFFEE_KEYWORDS.chinese) {
     // Skip if merchant is a restaurant/bar and only "咖啡" appears in merchant name without coffee terms in description
-    if (keyword === '咖啡' && isRestaurantOrBar && merchant.includes('咖啡') && 
-        !description.includes('咖啡') && !description.includes('coffee') && 
-        !description.includes('拿铁') && !description.includes('latte') && 
-        !description.includes('美式') && !description.includes('americano') && 
-        !description.includes('卡布') && !description.includes('cappuccino') && 
-        !description.includes('espresso')) {
+    if (keyword === '咖啡' && isRestaurantOrBar && merchant.includes('咖啡') &&
+      !description.includes('咖啡') && !description.includes('coffee') &&
+      !description.includes('拿铁') && !description.includes('latte') &&
+      !description.includes('美式') && !description.includes('americano') &&
+      !description.includes('卡布') && !description.includes('cappuccino') &&
+      !description.includes('espresso')) {
       continue; // Skip this match
     }
-    
+
     if (merchant.includes(keyword) || description.includes(keyword) || account.includes(keyword)) {
       if (!matchedKeywords.includes(keyword)) {
         matchedKeywords.push(keyword);
@@ -108,7 +110,7 @@ function detectCoffee(transaction) {
       }
     }
   }
-  
+
   // Exclude coffee-flavored food items (cookies, cakes, ice cream, etc.)
   // These are not actual coffee purchases
   const foodItemKeywords = [
@@ -119,20 +121,20 @@ function detectCoffee(transaction) {
     '巧克力', 'chocolate', 'candy', '糖果',
     '糖', 'sugar', 'sweet'
   ];
-  
-  const isFoodItem = foodItemKeywords.some(food => 
+
+  const isFoodItem = foodItemKeywords.some(food =>
     description.includes(food) || merchant.includes(food)
   );
-  
+
   // If it's a food item and only matched "咖啡" as a flavor, exclude it
   // But allow if merchant is clearly a coffee shop (high confidence merchant match)
   if (isFoodItem && confidence < 0.8 && matchedKeywords.length === 1 && matchedKeywords[0] === '咖啡') {
     confidence = 0; // Exclude coffee-flavored food items
   }
-  
+
   confidence = Math.min(confidence, 1.0);
   const isCoffee = confidence > 0.5;
-  
+
   // Detect coffee beans purchases
   const beanKeywords = [
     '咖啡豆', 'bean', 'beans', 'whole bean', 'whole beans',
@@ -143,42 +145,42 @@ function detectCoffee(transaction) {
     '庄园', 'estate', '水洗', 'washed', '日晒', 'natural',
     '浅烘', 'light roast', '中烘', 'medium roast', '深烘', 'dark roast'
   ];
-  
+
   // 白鲸咖啡 is a bean roaster, so all their transactions are beans
   const isBaijing = merchant.includes('白鲸') || description.includes('白鲸');
-  
+
   const allText = (merchant + ' ' + description + ' ' + account).toLowerCase();
-  
+
   // Check for "豆" (bean) keyword - must be part of "咖啡豆" or standalone "豆" but not just "咖啡"
   // Exclude "豆" when it's part of cafe names like "豆子咖啡实验室" (DOzzZE豆仔), "豆仔", etc.
-  const isCafeWithBeanInName = merchant.includes('豆子咖啡实验室') || merchant.includes('豆仔') || 
-                               merchant.includes('DOzzZE') || merchant.includes('咖啡实验室') ||
-                               description.includes('豆子咖啡实验室') || description.includes('豆仔') ||
-                               description.includes('DOzzZE') || description.includes('咖啡实验室');
-  
+  const isCafeWithBeanInName = merchant.includes('豆子咖啡实验室') || merchant.includes('豆仔') ||
+    merchant.includes('DOzzZE') || merchant.includes('咖啡实验室') ||
+    description.includes('豆子咖啡实验室') || description.includes('豆仔') ||
+    description.includes('DOzzZE') || description.includes('咖啡实验室');
+
   // Exclude "咖啡豆" when it's part of a shop/cafe name (e.g., "咖啡豆买手店", "咖啡豆店", "咖啡豆馆")
   // Only consider it beans if it's an actual product description
-  const isCoffeeBeanShop = (merchant.includes('咖啡豆买手店') || merchant.includes('咖啡豆店') || 
-                            merchant.includes('咖啡豆馆') || merchant.includes('咖啡豆馆') ||
-                            description.includes('咖啡豆买手店') || description.includes('咖啡豆店') ||
-                            description.includes('咖啡豆馆'));
-  
+  const isCoffeeBeanShop = (merchant.includes('咖啡豆买手店') || merchant.includes('咖啡豆店') ||
+    merchant.includes('咖啡豆馆') || merchant.includes('咖啡豆馆') ||
+    description.includes('咖啡豆买手店') || description.includes('咖啡豆店') ||
+    description.includes('咖啡豆馆'));
+
   const hasBeanKeyword = (!isCoffeeBeanShop && (description.includes('咖啡豆') || merchant.includes('咖啡豆'))) ||
-                         (description.includes('豆') && !description.includes('咖啡店') && !description.includes('咖啡厅') && !description.includes('咖啡·') && !isCafeWithBeanInName) ||
-                         (merchant.includes('豆') && !merchant.includes('咖啡店') && !merchant.includes('咖啡厅') && !isCafeWithBeanInName);
-  
+    (description.includes('豆') && !description.includes('咖啡店') && !description.includes('咖啡厅') && !description.includes('咖啡·') && !isCafeWithBeanInName) ||
+    (merchant.includes('豆') && !merchant.includes('咖啡店') && !merchant.includes('咖啡厅') && !isCafeWithBeanInName);
+
   // Exclude "手冲" (pour-over) when it's part of a cafe name (e.g., "手冲咖啡店", "手冲咖啡")
   // Only consider it a bean keyword when it's in bean-related context (e.g., "手冲豆", "手冲咖啡豆")
-  const isPourOverCafe = (merchant.includes('手冲咖啡店') || merchant.includes('手冲咖啡') || 
-                          description.includes('手冲咖啡店') || description.includes('手冲咖啡')) &&
-                         !description.includes('豆') && !merchant.includes('豆');
-  
+  const isPourOverCafe = (merchant.includes('手冲咖啡店') || merchant.includes('手冲咖啡') ||
+    description.includes('手冲咖啡店') || description.includes('手冲咖啡')) &&
+    !description.includes('豆') && !merchant.includes('豆');
+
   // Exclude "拼配" (blend) when it's followed by drink names (e.g., "拼配美式", "拼配拿铁")
-  const isBlendDrink = description.includes('拼配美式') || description.includes('拼配拿铁') || 
-                       description.includes('拼配卡布') || description.includes('拼配澳白') ||
-                       description.includes('拼配dirty') || description.includes('拼配Dirty') ||
-                       merchant.includes('拼配美式') || merchant.includes('拼配拿铁');
-  
+  const isBlendDrink = description.includes('拼配美式') || description.includes('拼配拿铁') ||
+    description.includes('拼配卡布') || description.includes('拼配澳白') ||
+    description.includes('拼配dirty') || description.includes('拼配Dirty') ||
+    merchant.includes('拼配美式') || merchant.includes('拼配拿铁');
+
   const isBeans = isCoffee && !isPourOverCafe && !isCoffeeBeanShop && (isBaijing || hasBeanKeyword || beanKeywords.some(keyword => {
     const keywordLower = keyword.toLowerCase();
     // Skip "手冲" if it's part of a cafe name
@@ -187,8 +189,8 @@ function detectCoffee(transaction) {
         return false;
       }
       // Only consider "手冲" as bean keyword if it's with bean-related terms
-      return (description.includes('手冲豆') || description.includes('手冲咖啡豆') || 
-              merchant.includes('手冲豆') || merchant.includes('手冲咖啡豆'));
+      return (description.includes('手冲豆') || description.includes('手冲咖啡豆') ||
+        merchant.includes('手冲豆') || merchant.includes('手冲咖啡豆'));
     }
     // Skip "拼配" if it's part of a drink name
     if (keyword === '拼配' || keyword === 'blend') {
@@ -196,8 +198,8 @@ function detectCoffee(transaction) {
         return false;
       }
       // Only consider "拼配" as bean keyword if it's with bean-related terms (e.g., "拼配豆", "拼配咖啡豆")
-      return (description.includes('拼配豆') || description.includes('拼配咖啡豆') || 
-              merchant.includes('拼配豆') || merchant.includes('拼配咖啡豆'));
+      return (description.includes('拼配豆') || description.includes('拼配咖啡豆') ||
+        merchant.includes('拼配豆') || merchant.includes('拼配咖啡豆'));
     }
     // For weight measurements, check if they appear as part of a weight (e.g., "100g", "250g")
     if (keyword.includes('g') || keyword === 'kg') {
@@ -207,11 +209,11 @@ function detectCoffee(transaction) {
     }
     return allText.includes(keywordLower);
   }));
-  
-  return { 
+
+  return {
     ...transaction,
-    isCoffee, 
-    confidence, 
+    isCoffee,
+    confidence,
     matchedKeywords,
     isBeans: isBeans || false
   };
@@ -221,10 +223,10 @@ function parseCSVLine(line) {
   const result = [];
   let current = '';
   let inQuotes = false;
-  
+
   for (let i = 0; i < line.length; i++) {
     const char = line[i];
-    
+
     if (char === '"') {
       if (inQuotes && line[i + 1] === '"') {
         current += '"';
@@ -239,7 +241,7 @@ function parseCSVLine(line) {
       current += char;
     }
   }
-  
+
   result.push(current.trim());
   return result;
 }
@@ -256,37 +258,37 @@ function parseAlipayCSV(filePath) {
     return [];
   }
   const lines = content.split(/\r?\n/);
-  
+
   // Header is at line 25 (index 24)
   const dataLines = lines.slice(25).filter(line => line.trim());
-  
+
   const transactions = [];
-  
+
   for (const line of dataLines) {
     if (!line.trim()) continue;
-    
+
     const row = parseCSVLine(line);
     if (row.length < 12) continue;
-    
+
     const [
       datetime, category, merchant, account, description,
       type, amount, paymentMethod, status,
       transactionId, merchantOrderId, note
     ] = row;
-    
+
     const dateMatch = datetime?.match(/^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})/);
     if (!dateMatch) continue;
-    
+
     const date = dateMatch[1];
     const time = dateMatch[2];
-    
+
     // Filter: only 2025 and "支出"
     if (!date.startsWith('2025') || type !== '支出') {
       continue;
     }
-    
+
     const amountNum = parseFloat(amount?.replace(/,/g, '') || '0');
-    
+
     transactions.push({
       date,
       time,
@@ -305,7 +307,7 @@ function parseAlipayCSV(filePath) {
       source: 'alipay',
     });
   }
-  
+
   console.log(`  Found ${transactions.length} transactions from 2025`);
   return transactions;
 }
@@ -318,23 +320,23 @@ function parseWeChatPayExcel(filePath) {
     console.warn(`  No worksheet found in ${filePath}`);
     return [];
   }
-  
+
   const worksheet = workbook.Sheets[sheetName];
   const jsonData = XLSX.utils.sheet_to_json(worksheet, {
     header: 1,
     defval: '',
     raw: false,
   });
-  
+
   if (jsonData.length === 0) {
     return [];
   }
-  
+
   // Find header row - WeChat Pay has header at row 16 (index 16)
   // Look for row that starts with "交易时间"
   let headerRowIndex = -1;
   let headerRow = [];
-  
+
   for (let i = 0; i < Math.min(20, jsonData.length); i++) {
     const row = jsonData[i];
     if (Array.isArray(row) && row.length > 0) {
@@ -346,12 +348,12 @@ function parseWeChatPayExcel(filePath) {
       }
     }
   }
-  
+
   if (headerRowIndex === -1) {
     console.warn(`  Could not find header row in ${filePath}`);
     return [];
   }
-  
+
   // Map columns
   const columnMap = {};
   headerRow.forEach((col, index) => {
@@ -380,22 +382,22 @@ function parseWeChatPayExcel(filePath) {
       columnMap.note = String(index);
     }
   });
-  
+
   const transactions = [];
-  
+
   for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
     const row = jsonData[i];
     if (!Array.isArray(row) || row.length === 0) continue;
-    
+
     const datetime = String(row[parseInt(columnMap.datetime || '0')] || '').trim();
     const type = String(row[parseInt(columnMap.type || '0')] || '').trim();
-    
+
     // Skip empty rows
     if (!datetime || datetime === '' || datetime === '/') continue;
-    
+
     let date = '';
     let time = '';
-    
+
     // WeChat Pay format: "2025-12-01 13:58:02"
     const dateMatch = datetime.match(/^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})/);
     if (dateMatch) {
@@ -411,11 +413,11 @@ function parseWeChatPayExcel(filePath) {
         continue;
       }
     }
-    
+
     if (!date.startsWith('2025')) continue;
     // WeChat Pay uses "支出" for outgoing payments
     if (type !== '支出' && !type.includes('支出')) continue;
-    
+
     const category = String(row[parseInt(columnMap.category || '1')] || '').trim();
     const merchant = String(row[parseInt(columnMap.merchant || '2')] || '').trim();
     const description = String(row[parseInt(columnMap.description || '3')] || '').trim();
@@ -425,11 +427,11 @@ function parseWeChatPayExcel(filePath) {
     const transactionId = String(row[parseInt(columnMap.transactionId || '8')] || '').trim();
     const merchantOrderId = String(row[parseInt(columnMap.merchantOrderId || '9')] || '').trim();
     const note = String(row[parseInt(columnMap.note || '10')] || '').trim();
-    
+
     // Remove currency symbols and parse amount
     // WeChat Pay format: "¥14.80" or "14.80"
     const amountNum = parseFloat(amountStr.replace(/[¥,\s]/g, '') || '0');
-    
+
     transactions.push({
       date,
       time,
@@ -448,7 +450,7 @@ function parseWeChatPayExcel(filePath) {
       source: 'wechatpay',
     });
   }
-  
+
   console.log(`  Found ${transactions.length} transactions from 2025`);
   return transactions;
 }
@@ -494,7 +496,7 @@ for (const transaction of allTransactions) {
     const account = (transaction.account || '').toLowerCase();
     const isMannerAccount = account.includes('mannercoffee');
     const isDeliveryAccount = account.includes('alibaba-inc.com') || account.includes('meituan');
-    
+
     // Sanitize transaction - remove sensitive fields
     const sanitizedTransaction = {
       date: transaction.date,
@@ -518,7 +520,21 @@ for (const transaction of allTransactions) {
       matchedKeywords,
       isBeans: isBeans || false,
     };
-    
+
+    // Anonymize Manner Coffee merchant names and descriptions
+    // Logic must match App.tsx manner filter: merchant includes Manner/北京茵赫/茵赫, or isMannerAccount, or matchedKeywords includes manner
+    const isMannerByMerchant = sanitizedTransaction.merchant.includes('Manner') ||
+      sanitizedTransaction.merchant.toLowerCase().includes('manner') ||
+      sanitizedTransaction.merchant.includes('北京茵赫') ||
+      sanitizedTransaction.merchant.includes('茵赫');
+
+    const isMannerByKeyword = matchedKeywords.some(k => k.toLowerCase().includes('manner'));
+
+    if (isMannerAccount || isMannerByMerchant || isMannerByKeyword) {
+      sanitizedTransaction.merchant = 'Manner Coffee';
+      sanitizedTransaction.description = 'Manner Coffee Order';
+    }
+
     coffeeTransactions.push(sanitizedTransaction);
   }
 }
@@ -549,7 +565,7 @@ const shopFrequency = {};
 for (const transaction of coffeeTransactions) {
   const month = transaction.date.substring(0, 7);
   purchaseFrequency[month] = (purchaseFrequency[month] || 0) + 1;
-  
+
   const shop = transaction.merchant || 'Unknown';
   shopFrequency[shop] = (shopFrequency[shop] || 0) + 1;
 }

@@ -96,3 +96,5 @@ If you prefer to deploy everything under one Vercel project:
 
 But the proxy/rewrite approach (Step 2) is simpler and keeps projects separate.
 
+
+

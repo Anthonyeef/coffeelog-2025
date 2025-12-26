@@ -78,3 +78,5 @@ Then visit `http://localhost:4173/coffee-2025/`
 - The app uses client-side routing, so direct access to routes should work correctly
 - Make sure your main blog's `vercel.json` doesn't conflict with `/coffee-2025` routes
 
+
+
