@@ -42,3 +42,23 @@ button:focus {
   }
 }
 
+/* Coffee Code App Responsive Styles */
+@media (max-width: 768px) {
+  .letter-selector-grid {
+    grid-template-columns: 1fr !important;
+    padding: 20px 10px !important;
+  }
+
+  .number-grid {
+    grid-template-columns: repeat(5, 1fr) !important;
+    gap: 8px !important;
+    padding: 15px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .number-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
+
